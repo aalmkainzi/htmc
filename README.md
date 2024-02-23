@@ -71,8 +71,34 @@ int main()
     free(doc);
 }
 ```
+## Runtime Strings
 
-## namespacing
+```C
+#include "htm.c"
+#include <stdio.h>
+
+int main()
+{
+    char myname[16];
+    fgets(myname, 16, stdout);
+    
+    char *doc =
+    htmldoc(
+        html(
+            head(
+                title(myname, "'s html page")
+            ),
+            body(
+                h1("this is ", myname, "'s HTML page")
+            )
+        )
+    );
+    
+    free(doc);
+}
+```
+
+## Namespacing
 If the HMTL tags pollute your namespace, you can choose to prefix them all with `htmc_`:
 
 ```C
