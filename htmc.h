@@ -3,6 +3,9 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct
 {
@@ -27,6 +30,8 @@ typedef struct
     htmc_cleanup_unused_buffers(ha, ret); \
     ret; \
 })
+
+extern const char *const htmc_doctypehtml;
 
 #define htmc_a(...) htmc_surround_by_tag(ha, 0, htmc_concat_strings(ha, ##__VA_ARGS__, NULL))
 #define htmc_abbr(...) htmc_surround_by_tag(ha, 1, htmc_concat_strings(ha, ##__VA_ARGS__, NULL))
@@ -285,6 +290,8 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
 
 #undef htmldoc
 
+#undef doctypehtml
+
 #undef a
 #undef abbr
 #undef address
@@ -405,6 +412,8 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
 #else
 
 #define htmldoc htmc_htmldoc
+
+#define doctypehtml htmc_doctypehtml
 
 #define a htmc_a
 #define abbr htmc_abbr
