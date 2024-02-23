@@ -139,3 +139,7 @@ and in all other TUs:
 ```
 
 Or alternatively you can add `htm.c` to your build and only include `htmc.h`
+
+## Compiler support
+
+This project uses statement expressions and `__VA_OPT__`, it was tested on `Gcc`, `Clang` and `Tcc`
