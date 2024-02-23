@@ -285,7 +285,7 @@ char *htmc_concat_strings(HtmcAllocations *ha, ...);
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);
 char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *between);
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...);
-char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *copy, char**str, size_t *cap, size_t *len, uint32_t idx), ...);
+char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...);
 
 #endif
 

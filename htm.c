@@ -316,7 +316,16 @@ char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
     return *combined_str_ptr;
 }
 
-char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, char*(*mod)(const char*str, size_t len, uint32_t idx), ...)
+char **htmc_strdup(HtmcAllocations *ha, char **str)
+{
+    size_t len = strlen(*str);
+    char **dup = htmc_get_unused(ha, len + 1);
+    memcpy(*dup, *str, len + 1);
+    
+    return dup;
+}
+
+char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...)
 {
     va_list args;
     va_start(args, mod);
@@ -327,32 +336,37 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, char*(*mod)(const ch
     
     const size_t combined_strlen = strlen(combined_str);
     
-    char *copy = malloc(combined_strlen + 1);
-    memcpy(copy, combined_str, combined_strlen + 1);
-    
     char **combined_str_ptr = htmc_find_buffer(ha, combined_str);
     size_t *cap = &ha->caps[ combined_str_ptr - ha->buffers ];
-
     size_t size = 0;
+    
+    char **iter_copy_ptr = htmc_strdup(ha, combined_str_ptr);
+    const char *iter_copy = *iter_copy_ptr;
+    const size_t copy_len = combined_strlen;
+    
+    char **unused_buffer = htmc_get_unused(ha, combined_strlen + 1);
+    **unused_buffer = '\0';
+    size_t *unused_cap = &ha->caps[ unused_buffer - ha->buffers ];
     
     for(uint32_t i = 0 ; i < nb ; i++)
     {
-        char *modified = mod(copy, combined_strlen, i);
-        size_t modified_len = strlen(modified);
+        mod(iter_copy, copy_len, unused_buffer, unused_cap, i);
+        size_t modified_len = strlen(*unused_buffer);
         
         if(modified_len + size >= *cap)
         {
             *combined_str_ptr = realloc(*combined_str_ptr, size + (modified_len * 2));
         }
         
-        memcpy(*combined_str_ptr + size, modified, modified_len);
+        memcpy(*combined_str_ptr + size, *unused_buffer, modified_len);
         
-        free(modified);
         size += modified_len;
     }
     
+    ha->unused[ iter_copy_ptr - ha->buffers ] = true;
+    ha->unused[ unused_buffer - ha->buffers ] = true;
+    
     (*combined_str_ptr)[size] = '\0';
     
-    free(copy);
     return *combined_str_ptr;
 }
