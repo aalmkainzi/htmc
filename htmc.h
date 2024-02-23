@@ -31,6 +31,9 @@ typedef struct
     ret; \
 })
 
+#define htmc_repeat(nb, ...) htmc_repeat_(htmc_ha, nb, ##__VA_ARGS__, NULL)
+#define htmc_repeat_modify(nb, mod, ...) htmc_repeat_modify_(htmc_ha, nb, mod, __VA_ARGS__, NULL)
+
 extern const char *const htmc_doctypehtml;
 
 #define htmc_a(...) htmc_surround_by_tag(htmc_ha, 0, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
@@ -281,6 +284,8 @@ char **htmc_get_unused(HtmcAllocations *ha, size_t with_size);
 char *htmc_concat_strings(HtmcAllocations *ha, ...);
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);
 char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *between);
+char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...);
+char *htmc_repeat_modify_(HtmcAllocations * htmc_ha, uint32_t nb, char*(*mod)(const char*str, size_t len, uint32_t idx), ...);
 
 #endif
 

@@ -163,6 +163,45 @@ char *htmc_concat_strings(HtmcAllocations *ha, ...)
     return *unused_str;
 }
 
+static char *htmc_vconcat_strings(HtmcAllocations *ha, va_list args)
+{
+    char **unused_str = htmc_get_unused(ha, 16);
+    
+    size_t *cap = &ha->caps[ unused_str - ha->buffers ];
+    size_t size = 0;
+    
+    char *next_str = va_arg(args, char*);
+    
+    // if no strings were provided, return an empty string
+    if(next_str == NULL)
+    {
+        if(*cap == 0)
+        {
+            *unused_str = calloc(1, sizeof(char));
+        }
+        **unused_str = '\0';
+        return *unused_str;
+    }
+    
+    for( ; next_str != NULL ; next_str = va_arg(args, char*))
+    {
+        size_t next_len = strlen(next_str);
+        if(size + next_len >= *cap)
+        {
+            *unused_str = realloc(*unused_str, (next_len + *cap) * 2);
+            *cap = (next_len + *cap) * 2;
+        }
+        memcpy(*unused_str + size, next_str, next_len);
+        
+        htmc_set_unused_if_alloced(ha, next_str);
+        
+        size = size + next_len;
+        (*unused_str)[size] = '\0';
+    }
+    
+    return *unused_str;
+}
+
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
 {
     const size_t between_len = strlen(between);
@@ -244,4 +283,76 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     htmc_set_unused(ha, between);
     
     return *unused_str;
+}
+
+char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
+{
+    va_list args;
+    va_start(args, nb);
+    
+    char *combined_str = htmc_vconcat_strings(ha, args);
+    
+    va_end(args);
+    
+    char **combined_str_ptr = htmc_find_buffer(ha, combined_str);
+    size_t *cap = &ha->caps[ combined_str_ptr - ha->buffers ];
+    const size_t combined_strlen = strlen(combined_str);
+    size_t size = combined_strlen;
+    
+    if(size * nb >= *cap)
+    {
+        *combined_str_ptr = realloc(*combined_str_ptr, size * nb + 1);
+        *cap = size * nb + 1;
+    }
+    
+    for(uint32_t i = 1 ; i < nb ; i++)
+    {
+        memcpy(*combined_str_ptr + size, *combined_str_ptr, combined_strlen);
+        size += combined_strlen;
+    }
+    
+    (*combined_str_ptr)[size] = '\0';
+    
+    return *combined_str_ptr;
+}
+
+char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, char*(*mod)(const char*str, size_t len, uint32_t idx), ...)
+{
+    va_list args;
+    va_start(args, mod);
+    
+    char *combined_str = htmc_vconcat_strings(ha, args);
+    
+    va_end(args);
+    
+    const size_t combined_strlen = strlen(combined_str);
+    
+    char *copy = malloc(combined_strlen + 1);
+    memcpy(copy, combined_str, combined_strlen + 1);
+    
+    char **combined_str_ptr = htmc_find_buffer(ha, combined_str);
+    size_t *cap = &ha->caps[ combined_str_ptr - ha->buffers ];
+
+    size_t size = 0;
+    
+    for(uint32_t i = 0 ; i < nb ; i++)
+    {
+        char *modified = mod(copy, combined_strlen, i);
+        size_t modified_len = strlen(modified);
+        
+        if(modified_len + size >= *cap)
+        {
+            *combined_str_ptr = realloc(*combined_str_ptr, size + (modified_len * 2));
+        }
+        
+        memcpy(*combined_str_ptr + size, modified, modified_len);
+        
+        free(modified);
+        size += modified_len;
+    }
+    
+    (*combined_str_ptr)[size] = '\0';
+    
+    free(copy);
+    return *combined_str_ptr;
 }
