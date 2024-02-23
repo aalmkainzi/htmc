@@ -80,7 +80,7 @@ int main()
 int main()
 {
     char myname[16];
-    fgets(myname, 16, stdout);
+    fgets(myname, 16, stdin);
     
     char *doc =
     htmldoc(
