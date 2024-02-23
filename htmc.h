@@ -149,6 +149,8 @@ __VA_ARGS__ __VA_OPT__(,) NULL))
 #define htmc_attr(tag, ...) \
 htmc_surround_by_tag_with_attrs(ha, htmc_id_##tag, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), htmc_concat_strings(ha, htmc_attr_
 
+#define htmc_str(...) #__VA_ARGS__
+
 #define htmc_id_a 0
 #define htmc_id_abbr 1
 #define htmc_id_address 2
@@ -264,15 +266,12 @@ htmc_surround_by_tag_with_attrs(ha, htmc_id_##tag, (char*[]){__VA_ARGS__}, sizeo
 #define htmc_id_video 112
 #define htmc_id_wbr 113
 
-#define htmc_str_(...) #__VA_ARGS__
-#define htmc_str(...) htmc_str_(__VA_ARGS__)
-
-void htmc_cleanup_unused_buffers(HtmcAllocations *ha, char *ret_ptr);
-char **htmc_find_buffer(HtmcAllocations *ha, const char *buffer);
+void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr);
+char **htmc_find_buffer(const HtmcAllocations *ha, const char *buffer);
 void htmc_grow_buffers(HtmcAllocations *ha);
 void htmc_set_unused(HtmcAllocations *ha, const char *str);
 void htmc_set_unused_if_alloced(HtmcAllocations *ha, const char *str);
-char **htmc_find_unused(HtmcAllocations *ha);
+char **htmc_find_unused(const HtmcAllocations *ha);
 char **htmc_get_unused(HtmcAllocations *ha, size_t with_size);
 char *htmc_concat_strings(HtmcAllocations *ha, ...);
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);

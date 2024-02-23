@@ -5,13 +5,15 @@
 #include <stdint.h>
 #include "htmc.h"
 
-const char *htmc_tags[] = {"a", "abbr", "address", "area", "article", "aside", "audio", "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button", "canvas", "caption", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", "i", "iframe", "img", "input", "ins", "kbd", "label", "legend", "li", "link", "main", "map", "mark", "math", "menu", "meta", "meter", "nav", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "picture", "pre", "progress", "q", "rp", "rt", "ruby", "s", "samp", "script", "section", "select", "slot", "small", "source", "span", "strong", "style", "sub", "summary", "sup", "svg", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "u", "ul", "var", "video", "wbr"};
+const char *htmc_tags[] = {
+"a", "abbr", "address", "area", "article", "aside", "audio", "b", "base", "bdi", "bdo", "blockquote", "body", "br", "button", "canvas", "caption", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dialog", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", "i", "iframe", "img", "input", "ins", "kbd", "label", "legend", "li", "link", "main", "map", "mark", "math", "menu", "meta", "meter", "nav", "noscript", "object", "ol", "optgroup", "option", "output", "p", "param", "picture", "pre", "progress", "q", "rp", "rt", "ruby", "s", "samp", "script", "section", "select", "slot", "small", "source", "span", "strong", "style", "sub", "summary", "sup", "svg", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "u", "ul", "var", "video", "wbr"
+};
 
 const uint32_t htmc_tag_lengths[] = {
 sizeof("a") - 1, sizeof("abbr") - 1, sizeof("address") - 1, sizeof("area") - 1, sizeof("article") - 1, sizeof("aside") - 1, sizeof("audio") - 1, sizeof("b") - 1, sizeof("base") - 1, sizeof("bdi") - 1, sizeof("bdo") - 1, sizeof("blockquote") - 1, sizeof("body") - 1, sizeof("br") - 1, sizeof("button") - 1, sizeof("canvas") - 1, sizeof("caption") - 1, sizeof("cite") - 1, sizeof("code") - 1, sizeof("col") - 1, sizeof("colgroup") - 1, sizeof("data") - 1, sizeof("datalist") - 1, sizeof("dd") - 1, sizeof("del") - 1, sizeof("details") - 1, sizeof("dfn") - 1, sizeof("dialog") - 1, sizeof("div") - 1, sizeof("dl") - 1, sizeof("dt") - 1, sizeof("em") - 1, sizeof("embed") - 1, sizeof("fieldset") - 1, sizeof("figcaption") - 1, sizeof("figure") - 1, sizeof("footer") - 1, sizeof("form") - 1, sizeof("h1") - 1, sizeof("h2") - 1, sizeof("h3") - 1, sizeof("h4") - 1, sizeof("h5") - 1, sizeof("h6") - 1, sizeof("head") - 1, sizeof("header") - 1, sizeof("hgroup") - 1, sizeof("hr") - 1, sizeof("html") - 1, sizeof("i") - 1, sizeof("iframe") - 1, sizeof("img") - 1, sizeof("input") - 1, sizeof("ins") - 1, sizeof("kbd") - 1, sizeof("label") - 1, sizeof("legend") - 1, sizeof("li") - 1, sizeof("link") - 1, sizeof("main") - 1, sizeof("map") - 1, sizeof("mark") - 1, sizeof("math") - 1, sizeof("menu") - 1, sizeof("meta") - 1, sizeof("meter") - 1, sizeof("nav") - 1, sizeof("noscript") - 1, sizeof("object") - 1, sizeof("ol") - 1, sizeof("optgroup") - 1, sizeof("option") - 1, sizeof("output") - 1, sizeof("p") - 1, sizeof("param") - 1, sizeof("picture") - 1, sizeof("pre") - 1, sizeof("progress") - 1, sizeof("q") - 1, sizeof("rp") - 1, sizeof("rt") - 1, sizeof("ruby") - 1, sizeof("s") - 1, sizeof("samp") - 1, sizeof("script") - 1, sizeof("section") - 1, sizeof("select") - 1, sizeof("slot") - 1, sizeof("small") - 1, sizeof("source") - 1, sizeof("span") - 1, sizeof("strong") - 1, sizeof("style") - 1, sizeof("sub") - 1, sizeof("summary") - 1, sizeof("sup") - 1, sizeof("svg") - 1, sizeof("table") - 1, sizeof("tbody") - 1, sizeof("td") - 1, sizeof("template") - 1, sizeof("textarea") - 1, sizeof("tfoot") - 1, sizeof("th") - 1, sizeof("thead") - 1, sizeof("time") - 1, sizeof("title") - 1, sizeof("tr") - 1, sizeof("track") - 1, sizeof("u") - 1, sizeof("ul") - 1, sizeof("var") - 1, sizeof("video") - 1, sizeof("wbr") - 1
 };
 
-void htmc_cleanup_unused_buffers(HtmcAllocations *ha, char *ret_ptr)
+void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr)
 {
     char **current;
     for(current = &ha->buffers[0] ; *current != ret_ptr ; current++)
@@ -29,7 +31,7 @@ void htmc_cleanup_unused_buffers(HtmcAllocations *ha, char *ret_ptr)
     free(ha);
 }
 
-char **htmc_find_buffer(HtmcAllocations *ha, const char *buffer)
+char **htmc_find_buffer(const HtmcAllocations *ha, const char *buffer)
 {
     for(size_t i = 0 ; i < ha->nb ; i++)
     {
@@ -68,7 +70,7 @@ void htmc_set_unused_if_alloced(HtmcAllocations *ha, const char *str)
     }
 }
 
-char **htmc_find_unused(HtmcAllocations *ha)
+char **htmc_find_unused(const HtmcAllocations *ha)
 {
     size_t first_unused;
     
@@ -163,8 +165,6 @@ char *htmc_concat_strings(HtmcAllocations *ha, ...)
     return *unused_str;
 }
 
-
-
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
 {
     const size_t between_len = strlen(between);
@@ -246,4 +246,13 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     htmc_set_unused(ha, between);
     
     return *unused_str;
+}
+#include <stdio.h>
+int main()
+{
+    for(size_t i = 0 ; i < sizeof(htmc_tag_lengths) / sizeof(htmc_tag_lengths[0]) ; i++)
+    {
+        printf("%d, ", htmc_tag_lengths[i]);
+    }
+    puts("");
 }
