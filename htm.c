@@ -247,12 +247,3 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     
     return *unused_str;
 }
-#include <stdio.h>
-int main()
-{
-    for(size_t i = 0 ; i < sizeof(htmc_tag_lengths) / sizeof(htmc_tag_lengths[0]) ; i++)
-    {
-        printf("%d, ", htmc_tag_lengths[i]);
-    }
-    puts("");
-}
