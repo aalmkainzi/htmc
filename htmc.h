@@ -20,8 +20,8 @@ typedef struct
     HtmcAllocations *htmc_ha = malloc(sizeof(HtmcAllocations)); \
     const size_t init_cap = 4; \
     *htmc_ha = (HtmcAllocations){ \
-        .buffers = calloc(16, sizeof(char*)), \
         .nb = init_cap, \
+        .buffers = calloc(init_cap, sizeof(char*)), \
         .caps = calloc(init_cap, sizeof(size_t)), \
         .unused = malloc(init_cap * sizeof(bool))\
     }; \
