@@ -33,6 +33,7 @@ typedef struct
 
 #define htmc_repeat(nb, ...) htmc_repeat_(htmc_ha, nb, ##__VA_ARGS__, NULL)
 #define htmc_repeat_modify(nb, mod, ...) htmc_repeat_modify_(htmc_ha, nb, mod, __VA_ARGS__, NULL)
+#define htmc_repeat_modify_r(nb, mod, ctx, ...) htmc_repeat_modify_r_(htmc_ha, nb, mod, ctx, __VA_ARGS__, NULL)
 
 extern const char *const htmc_doctypehtml;
 
@@ -286,6 +287,8 @@ char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);
 char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *between);
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...);
 char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...);
+char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, ...);
+void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 
 #endif
 
