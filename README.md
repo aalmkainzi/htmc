@@ -1,4 +1,4 @@
-# a library for creating HTML documents in C code
+# a library for creating HTML documents in C
 
 ```C
 #include "htm.c"
