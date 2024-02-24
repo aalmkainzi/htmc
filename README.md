@@ -17,7 +17,8 @@ int main()
             )
         )
     );
-    
+
+    puts(doc);
     free(doc);
 }
 ```
@@ -45,7 +46,8 @@ int main()
             )
         )
     );
-    
+
+    puts(doc);
     free(doc);
 }
 ```
@@ -68,6 +70,7 @@ int main()
         )
     );
     
+    puts(doc);
     free(doc);
 }
 ```
@@ -75,7 +78,6 @@ int main()
 
 ```C
 #include "htm.c"
-#include <stdio.h>
 
 int main()
 {
@@ -93,11 +95,63 @@ int main()
             )
         )
     );
-    
+
+    puts(doc);
+    free(doc);
+}
+```
+## Formatted Strings
+```C
+#include "htm.c"
+
+int main()
+{
+    char *doc =
+    htmldoc(
+        html(
+            head(
+                title(
+                    htmc_fmt("This is %s's web page", myname)
+                )
+            ),
+            body(
+                htmc_fmt("welcome to %s's web page", myname)
+            )
+        )
+    );
+
+    puts(doc);
     free(doc);
 }
 ```
 
+## Embedding C code in the HTML
+
+```C
+#include "htm.c"
+
+int main()
+{
+    char *doc =
+    htmldoc(
+        html(
+            head(),
+            body(
+                htmc_ccode(
+                    int i;
+                    for(i = 0 ; i < 10 ; i++)
+                    {
+                        htmc_yield(h1("BIG TEXT"));
+                    }
+                )
+            )
+        )
+    );
+    
+    puts(doc);
+    free(doc);
+}
+```
 ## Namespacing
 If the HMTL tags pollute your namespace, you can choose to prefix them all with `htmc_`:
 
