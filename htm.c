@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdio.h>
 #include "htmc.h"
 
 const char *htmc_tags[] = {
@@ -206,10 +207,10 @@ char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
 {
     const size_t between_len = strlen(between);
     const size_t tag_len = htmc_tag_lengths[tag_id];
-    const size_t len_to_add = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1;
+    const size_t needed_cap = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1 + 1;
     const char *tag = htmc_tags[tag_id];
     
-    char **unused_str = htmc_get_unused(ha, len_to_add + 1);
+    char **unused_str = htmc_get_unused(ha, needed_cap);
     
     memcpy(*unused_str, "<", 1);
     memcpy(*unused_str + 1, tag, tag_len);
@@ -218,7 +219,7 @@ char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
     memcpy(*unused_str + 1 + tag_len + 1 + between_len, "</", 2);
     memcpy(*unused_str + 1 + tag_len + 1 + between_len + 1 + 1, tag, tag_len);
     memcpy(*unused_str + 1 + tag_len + 1 + between_len + 1 + 1 + tag_len, ">", 1);
-    (*unused_str)[len_to_add] = '\0';
+    (*unused_str)[needed_cap - 1] = '\0';
     
     htmc_set_unused(ha, between);
     
@@ -229,10 +230,10 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
 {
     const size_t between_len = strlen(between);
     const size_t tag_len = htmc_tag_lengths[tag_id];
-    const size_t len_to_add = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1; // not including attributes
+    const size_t needed_cap = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1 + 1;
     const char *tag = htmc_tags[tag_id];
     
-    char **unused_str = htmc_get_unused(ha, len_to_add + 1);
+    char **unused_str = htmc_get_unused(ha, needed_cap);
     size_t *cap = &ha->caps[ unused_str - ha->buffers ];
     size_t size = 0;
     
@@ -283,6 +284,22 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     htmc_set_unused(ha, between);
     
     return *unused_str;
+}
+
+// this is uselss. void tags should take no args.
+char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
+{
+    const char *tag = htmc_tags[tag_id];
+    const size_t tag_len = htmc_tag_lengths[tag_id];
+    
+    char **unused = htmc_get_unused(ha, 1 + tag_len + 1 + 1);
+    
+    memcpy(*unused, "<", 1);
+    memcpy(*unused + 1, tag, tag_len);
+    memcpy(*unused + 1 + tag_len, ">", 1);
+    (*unused)[1 + tag_len + 1] = '\0';
+    
+    return *unused;
 }
 
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
@@ -417,6 +434,52 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
     return *combined_str_ptr;
 }
 
+// we could take void* as va args and check if its in range 'ha->buffers >= <= ha->buffers + nb' if so its char** if not its char*
+char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    
+    va_list args_copy1;
+    va_copy(args_copy1, args);
+    
+    va_list args_copy2;
+    va_copy(args_copy2, args);
+    
+    int str_len = vsnprintf(NULL, 0, fmt, args);
+    va_end(args);
+    
+    char **unused = htmc_get_unused(ha, str_len + 1);
+    
+    vsnprintf(*unused, str_len + 1, fmt, args_copy1);
+    va_end(args_copy1);
+    
+    // TODO we need to find all %s in the fmt and check if we need to set it to unused (maybe not? its not like its gonna leak)
+    va_end(args_copy2);
+    
+    return *unused;
+}
+
+void htmc_append_to_buffer(HtmcAllocations *ha, char **buffer, ...)
+{
+    size_t *cap = &ha->caps[ buffer - ha->buffers ];
+    
+    size_t len = strlen(*buffer);
+    
+    va_list list;
+    va_start(list, buffer);
+    
+    char *concated = htmc_vconcat_strings(ha, list);
+    size_t concated_len = strlen(concated);
+    
+    va_end(list);
+    
+    htmc_gurantee_cap(buffer, cap, concated_len + len + 1);
+    memcpy(*buffer + len, concated, concated_len + 1);
+    
+    ha->unused[ htmc_find_buffer(ha, concated) - ha->buffers ] = true;
+}
+
 void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap)
 {
     if(*cap < new_cap)
@@ -425,3 +488,4 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap)
         *cap = new_cap;
     }
 }
+
