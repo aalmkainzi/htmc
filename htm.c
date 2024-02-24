@@ -1,5 +1,4 @@
 #include <stdarg.h>
-#include <stdio.h>
 #include "htmc.h"
 
 const char *htmc_tags[] = {
