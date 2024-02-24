@@ -477,12 +477,12 @@ void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, ...)
     
     char *concated = htmc_vconcat_strings(ha, list);
     char **concated_ptr = htmc_find_buffer(ha, concated);
-    size_t *concated_len = &ha->sizes[ concated_ptr - ha->buffers ];
+    const size_t concated_buf_idx = concated_ptr - ha->buffers;
+    size_t *concated_len = &ha->sizes[ concated_buf_idx ];
     
     va_end(list);
     
     htmc_gurantee_cap(buffer, cap, *concated_len + *len + 1);
-    len = &ha->sizes[ buffer - ha->buffers ]; // this is because htmc_gurantee_cap might realloc and len will be dangling
     
     memcpy(*buffer + *len, concated, *concated_len + 1);
     *len += *concated_len;

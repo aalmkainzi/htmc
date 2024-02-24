@@ -42,6 +42,7 @@ typedef struct
 ({ \
     char **htmc_ccode_yielded = htmc_get_unused(htmc_ha, 17); \
     size_t htmc_ccode_yielded_idx = htmc_ccode_yielded - htmc_ha->buffers; \
+    htmc_ha->sizes[htmc_ccode_yielded_idx] = 0; \
     **htmc_ccode_yielded = '\0'; \
     __VA_ARGS__ \
     htmc_ccode_yielded = &htmc_ha->buffers[ htmc_ccode_yielded_idx ]; \
