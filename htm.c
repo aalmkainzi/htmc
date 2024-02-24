@@ -296,7 +296,6 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     return *unused_str;
 }
 
-// this is uselss. void tags should take no args.
 char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
 {
     const char *tag = htmc_tags[tag_id];
@@ -313,6 +312,8 @@ char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
     
     return *unused;
 }
+
+// TODO htmc_make_tag_with_attrs
 
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
 {
