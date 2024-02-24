@@ -465,13 +465,14 @@ char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
     return *unused;
 }
 
-void htmc_append_to_buffer(HtmcAllocations *ha, char **buffer, ...)
+void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, ...)
 {
+    char **buffer = &ha->buffers[ buffer_idx ];
     size_t *cap = &ha->caps[ buffer - ha->buffers ];
     size_t *len = &ha->sizes[ buffer - ha->buffers ];
     
     va_list list;
-    va_start(list, buffer);
+    va_start(list, buffer_idx);
     
     char *concated = htmc_vconcat_strings(ha, list);
     char **concated_ptr = htmc_find_buffer(ha, concated);

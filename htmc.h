@@ -44,9 +44,10 @@ typedef struct
     size_t htmc_ccode_yielded_idx = htmc_ccode_yielded - htmc_ha->buffers; \
     **htmc_ccode_yielded = '\0'; \
     __VA_ARGS__ \
+    htmc_ccode_yielded = &htmc_ha->buffers[ htmc_ccode_yielded_idx ]; \
     *htmc_ccode_yielded; \
 })
-#define htmc_yield(...) htmc_append_to_buffer(htmc_ha, (htmc_ccode_yielded=&htmc_ha->buffers[htmc_ccode_yielded_idx]), ##__VA_ARGS__, NULL)
+#define htmc_yield(...) htmc_append_to_buffer_idx(htmc_ha, htmc_ccode_yielded_idx, ##__VA_ARGS__, NULL)
 
 extern const char *const htmc_doctypehtml;
 
@@ -304,7 +305,7 @@ char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...);
 char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...);
 char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, ...);
 char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...);
-void htmc_append_to_buffer(HtmcAllocations *ha, char **buffer, ...);
+void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, ...);
 
 void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 
