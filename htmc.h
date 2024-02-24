@@ -13,6 +13,7 @@ typedef struct
     size_t nb;
     bool *unused;
     size_t *caps;
+    size_t *sizes;
     char **buffers;
 } HtmcAllocations;
 
@@ -24,7 +25,8 @@ typedef struct
         .nb = init_cap, \
         .buffers = calloc(init_cap, sizeof(char*)), \
         .caps = calloc(init_cap, sizeof(size_t)), \
-        .unused = malloc(init_cap * sizeof(bool))\
+        .sizes = calloc(init_cap, sizeof(size_t)), \
+        .unused = malloc(init_cap * sizeof(bool)), \
     }; \
     memset(htmc_ha->unused, 1, init_cap * sizeof(bool)); \
     char *ret = htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL); \
@@ -38,12 +40,13 @@ typedef struct
 #define htmc_fmt(fmt, ...) htmc_fmt_(htmc_ha, fmt, ##__VA_ARGS__)
 #define htmc_ccode(...) \
 ({ \
-    char **htmc_ccode_yielded = htmc_get_unused(htmc_ha, 16); \
+    char **htmc_ccode_yielded = htmc_get_unused(htmc_ha, 17); \
+    size_t htmc_ccode_yielded_idx = htmc_ccode_yielded - htmc_ha->buffers; \
     **htmc_ccode_yielded = '\0'; \
     __VA_ARGS__ \
     *htmc_ccode_yielded; \
 })
-#define htmc_yield(...) htmc_append_to_buffer(htmc_ha, htmc_ccode_yielded, ##__VA_ARGS__, NULL)
+#define htmc_yield(...) htmc_append_to_buffer(htmc_ha, (htmc_ccode_yielded=&htmc_ha->buffers[htmc_ccode_yielded_idx]), ##__VA_ARGS__, NULL)
 
 extern const char *const htmc_doctypehtml;
 

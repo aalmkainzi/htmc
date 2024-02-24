@@ -24,6 +24,7 @@ void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr)
     }
     
     free(ha->caps);
+    free(ha->sizes);
     free(ha->unused);
     free(ha->buffers);
     free(ha);
@@ -43,10 +44,13 @@ void htmc_grow_buffers(HtmcAllocations *ha)
 {
     ha->buffers = realloc(ha->buffers, ha->nb * 2 * sizeof(char*));
     memset(ha->buffers + ha->nb, 0, ha->nb * sizeof(char*));
-
+    
     ha->caps = realloc(ha->caps, ha->nb * 2 * sizeof(size_t));
     memset(ha->caps + ha->nb, 0, ha->nb * sizeof(size_t));
-
+    
+    ha->sizes = realloc(ha->sizes, ha->nb * 2 * sizeof(size_t));
+    memset(ha->sizes + ha->nb, 0, ha->nb * sizeof(size_t));
+    
     ha->unused = realloc(ha->unused, ha->nb * 2 * sizeof(bool));
     memset(ha->unused + ha->nb, 1, ha->nb * sizeof(bool));
     
@@ -160,6 +164,7 @@ char *htmc_concat_strings(HtmcAllocations *ha, ...)
     
     va_end(args);
     
+    ha->sizes[ unused_str - ha->buffers ] = size;
     return *unused_str;
 }
 
@@ -199,6 +204,8 @@ static char *htmc_vconcat_strings(HtmcAllocations *ha, va_list args)
         (*unused_str)[size] = '\0';
     }
     
+    ha->sizes[ unused_str - ha->buffers ] = size;
+    
     return *unused_str;
 }
 
@@ -219,6 +226,8 @@ char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
     memcpy(*unused_str + 1 + tag_len + 1 + between_len + 1 + 1, tag, tag_len);
     memcpy(*unused_str + 1 + tag_len + 1 + between_len + 1 + 1 + tag_len, ">", 1);
     (*unused_str)[needed_cap - 1] = '\0';
+    
+    ha->sizes[ unused_str - ha->buffers ] = needed_cap - 1;
     
     htmc_set_unused(ha, between);
     
@@ -280,6 +289,8 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     
     (*unused_str)[size] = '\0';
     
+    ha->sizes[ unused_str - ha->buffers ] = size;
+    
     htmc_set_unused(ha, between);
     
     return *unused_str;
@@ -298,6 +309,8 @@ char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
     memcpy(*unused + 1 + tag_len, ">", 1);
     (*unused)[1 + tag_len + 1] = '\0';
     
+    ha->sizes[ unused - ha->buffers ] = tag_len + 2;
+    
     return *unused;
 }
 
@@ -312,31 +325,33 @@ char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
     
     char **combined_str_ptr = htmc_find_buffer(ha, combined_str);
     size_t *cap = &ha->caps[ combined_str_ptr - ha->buffers ];
-    const size_t combined_strlen = strlen(combined_str);
-    size_t size = combined_strlen;
+    const size_t combined_strlen = ha->sizes[ combined_str_ptr - ha->buffers ];
+    size_t *size = &ha->sizes[ combined_str_ptr - ha->buffers ];
     
-    if(size * nb >= *cap)
+    if(combined_strlen * nb >= *cap)
     {
-        *combined_str_ptr = realloc(*combined_str_ptr, size * nb + 1);
-        *cap = size * nb + 1;
+        *combined_str_ptr = realloc(*combined_str_ptr, combined_strlen * nb + 1);
+        *cap = combined_strlen * nb + 1;
     }
     
     for(uint32_t i = 1 ; i < nb ; i++)
     {
-        memcpy(*combined_str_ptr + size, *combined_str_ptr, combined_strlen);
-        size += combined_strlen;
+        memcpy(*combined_str_ptr + *size, *combined_str_ptr, combined_strlen);
+        *size += combined_strlen;
     }
     
-    (*combined_str_ptr)[size] = '\0';
+    (*combined_str_ptr)[*size] = '\0';
     
     return *combined_str_ptr;
 }
 
 char **htmc_strdup(HtmcAllocations *ha, char **str)
 {
-    size_t len = strlen(*str);
+    size_t len = ha->sizes[ str - ha->buffers ];
     char **dup = htmc_get_unused(ha, len + 1);
     memcpy(*dup, *str, len + 1);
+    
+    ha->sizes[ dup - ha->buffers ] = len;
     
     return dup;
 }
@@ -350,17 +365,15 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
     
     va_end(args);
     
-    const size_t combined_strlen = strlen(combined_str);
-    
     char **combined_str_ptr = htmc_find_buffer(ha, combined_str);
     size_t *cap = &ha->caps[ combined_str_ptr - ha->buffers ];
-    size_t size = 0;
+    size_t *size = &ha->sizes[ combined_str_ptr - ha->buffers ];
     
     char **iter_copy_ptr = htmc_strdup(ha, combined_str_ptr);
     const char *iter_copy = *iter_copy_ptr;
-    const size_t copy_len = combined_strlen;
+    const size_t copy_len = *size;
     
-    char **unused_buffer = htmc_get_unused(ha, combined_strlen + 1);
+    char **unused_buffer = htmc_get_unused(ha, copy_len + 1);
     **unused_buffer = '\0';
     size_t *unused_cap = &ha->caps[ unused_buffer - ha->buffers ];
     
@@ -369,20 +382,20 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
         mod(iter_copy, copy_len, unused_buffer, unused_cap, i);
         size_t modified_len = strlen(*unused_buffer);
         
-        if(modified_len + size >= *cap)
+        if(modified_len + *size >= *cap)
         {
-            *combined_str_ptr = realloc(*combined_str_ptr, size + (modified_len * 2));
+            *combined_str_ptr = realloc(*combined_str_ptr, *size + (modified_len * 2));
         }
         
-        memcpy(*combined_str_ptr + size, *unused_buffer, modified_len);
+        memcpy(*combined_str_ptr + *size, *unused_buffer, modified_len);
         
-        size += modified_len;
+        *size += modified_len;
     }
     
     ha->unused[ iter_copy_ptr - ha->buffers ] = true;
     ha->unused[ unused_buffer - ha->buffers ] = true;
     
-    (*combined_str_ptr)[size] = '\0';
+    (*combined_str_ptr)[*size] = '\0';
     
     return *combined_str_ptr;
 }
@@ -396,17 +409,15 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
     
     va_end(args);
     
-    const size_t combined_strlen = strlen(combined_str);
-    
     char **combined_str_ptr = htmc_find_buffer(ha, combined_str);
     size_t *cap = &ha->caps[ combined_str_ptr - ha->buffers ];
-    size_t size = 0;
+    size_t *size = &ha->sizes[ combined_str_ptr - ha->buffers ];
     
     char **iter_copy_ptr = htmc_strdup(ha, combined_str_ptr);
     const char *iter_copy = *iter_copy_ptr;
-    const size_t copy_len = combined_strlen;
+    const size_t copy_len = *size;
     
-    char **unused_buffer = htmc_get_unused(ha, combined_strlen + 1);
+    char **unused_buffer = htmc_get_unused(ha, copy_len + 1);
     **unused_buffer = '\0';
     size_t *unused_cap = &ha->caps[ unused_buffer - ha->buffers ];
     
@@ -415,20 +426,20 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
         mod(iter_copy, copy_len, unused_buffer, unused_cap, i, arg);
         size_t modified_len = strlen(*unused_buffer);
         
-        if(modified_len + size >= *cap)
+        if(modified_len + *size >= *cap)
         {
-            *combined_str_ptr = realloc(*combined_str_ptr, size + (modified_len * 2));
+            *combined_str_ptr = realloc(*combined_str_ptr, *size + (modified_len * 2));
         }
         
-        memcpy(*combined_str_ptr + size, *unused_buffer, modified_len);
+        memcpy(*combined_str_ptr + *size, *unused_buffer, modified_len);
         
-        size += modified_len;
+        *size += modified_len;
     }
     
     ha->unused[ iter_copy_ptr - ha->buffers ] = true;
     ha->unused[ unused_buffer - ha->buffers ] = true;
     
-    (*combined_str_ptr)[size] = '\0';
+    (*combined_str_ptr)[*size] = '\0';
     
     return *combined_str_ptr;
 }
@@ -442,19 +453,14 @@ char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
     va_list args_copy1;
     va_copy(args_copy1, args);
     
-    va_list args_copy2;
-    va_copy(args_copy2, args);
-    
     int str_len = vsnprintf(NULL, 0, fmt, args);
     va_end(args);
     
     char **unused = htmc_get_unused(ha, str_len + 1);
+    ha->sizes[ unused - ha->buffers ] = str_len;
     
     vsnprintf(*unused, str_len + 1, fmt, args_copy1);
     va_end(args_copy1);
-    
-    // TODO we need to find all %s in the fmt and check if we need to set it to unused (maybe not? its not like its gonna leak)
-    va_end(args_copy2);
     
     return *unused;
 }
@@ -462,21 +468,24 @@ char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
 void htmc_append_to_buffer(HtmcAllocations *ha, char **buffer, ...)
 {
     size_t *cap = &ha->caps[ buffer - ha->buffers ];
-    
-    size_t len = strlen(*buffer);
+    size_t *len = &ha->sizes[ buffer - ha->buffers ];
     
     va_list list;
     va_start(list, buffer);
     
     char *concated = htmc_vconcat_strings(ha, list);
-    size_t concated_len = strlen(concated);
+    char **concated_ptr = htmc_find_buffer(ha, concated);
+    size_t *concated_len = &ha->sizes[ concated_ptr - ha->buffers ];
     
     va_end(list);
     
-    htmc_gurantee_cap(buffer, cap, concated_len + len + 1);
-    memcpy(*buffer + len, concated, concated_len + 1);
+    htmc_gurantee_cap(buffer, cap, *concated_len + *len + 1);
+    len = &ha->sizes[ buffer - ha->buffers ]; // this is because htmc_gurantee_cap might realloc and len will be dangling
     
-    ha->unused[ htmc_find_buffer(ha, concated) - ha->buffers ] = true;
+    memcpy(*buffer + *len, concated, *concated_len + 1);
+    *len += *concated_len;
+    
+    ha->unused[ concated_ptr - ha->buffers ] = true;
 }
 
 void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap)
@@ -487,4 +496,3 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap)
         *cap = new_cap;
     }
 }
-
