@@ -40,13 +40,11 @@ typedef struct
 #define htmc_fmt(fmt, ...) htmc_fmt_(htmc_ha, fmt, ##__VA_ARGS__)
 #define htmc_ccode(...) \
 ({ \
-    char **htmc_ccode_yielded = htmc_get_unused(htmc_ha, 17); \
-    size_t htmc_ccode_yielded_idx = htmc_ccode_yielded - htmc_ha->buffers; \
-    htmc_ha->sizes[htmc_ccode_yielded_idx] = 0; \
-    **htmc_ccode_yielded = '\0'; \
+    size_t htmc_ccode_yielded_idx = htmc_get_unused(htmc_ha, 17); \
+    htmc_ha->sizes[ htmc_ccode_yielded_idx ] = 0; \
     __VA_ARGS__ \
-    htmc_ccode_yielded = &htmc_ha->buffers[ htmc_ccode_yielded_idx ]; \
-    *htmc_ccode_yielded; \
+    char *htmc_ccode_yielded = htmc_ha->buffers[ htmc_ccode_yielded_idx ]; \
+    htmc_ccode_yielded; \
 })
 #define htmc_yield(...) htmc_append_to_buffer_idx(htmc_ha, htmc_ccode_yielded_idx, ##__VA_ARGS__, NULL)
 
@@ -291,12 +289,12 @@ htmc_surround_by_tag_with_attrs(htmc_ha, htmc_id_##tag, (char*[]){__VA_ARGS__}, 
 #define htmc_id_wbr 113
 
 void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr);
-char **htmc_find_buffer(const HtmcAllocations *ha, const char *buffer);
+size_t htmc_find_buffer(const HtmcAllocations *ha, const char *buffer);
 void htmc_grow_buffers(HtmcAllocations *ha);
 void htmc_set_unused(HtmcAllocations *ha, const char *str);
 void htmc_set_unused_if_alloced(HtmcAllocations *ha, const char *str);
-char **htmc_find_unused(const HtmcAllocations *ha);
-char **htmc_get_unused(HtmcAllocations *ha, size_t with_size);
+size_t htmc_find_unused(const HtmcAllocations *ha);
+size_t htmc_get_unused(HtmcAllocations *ha, size_t with_size);
 char *htmc_concat_strings(HtmcAllocations *ha, ...);
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);
 char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *between);
