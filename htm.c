@@ -367,6 +367,12 @@ size_t htmc_strdup(HtmcAllocations *ha, size_t buffer_idx)
     return unused_buffer_idx;
 }
 
+char *htmc_get_strdup(HtmcAllocations *ha, size_t buffer_idx)
+{
+    size_t idx = htmc_strdup(ha, buffer_idx);
+    return ha->buffers[ idx ];
+}
+
 char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...)
 {
     va_list args;

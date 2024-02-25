@@ -37,10 +37,12 @@ typedef struct
 #define htmc_repeat(nb, ...) htmc_repeat_(htmc_ha, nb, ##__VA_ARGS__, NULL)
 #define htmc_repeat_modify(nb, mod, ...) htmc_repeat_modify_(htmc_ha, nb, mod, __VA_ARGS__, NULL)
 #define htmc_repeat_modify_r(nb, mod, ctx, ...) htmc_repeat_modify_r_(htmc_ha, nb, mod, ctx, __VA_ARGS__, NULL)
+
 #define htmc_fmt(fmt, ...) htmc_fmt_(htmc_ha, fmt, ##__VA_ARGS__)
+
 #define htmc_ccode(...) \
 ({ \
-    size_t htmc_ccode_yielded_idx = htmc_get_unused(htmc_ha, 17); \
+    size_t htmc_ccode_yielded_idx = htmc_get_unused(htmc_ha, 16); \
     htmc_ha->sizes[ htmc_ccode_yielded_idx ] = 0; \
     htmc_ha->buffers[ htmc_ccode_yielded_idx ][0] = '\0'; \
     __VA_ARGS__ \
@@ -48,7 +50,15 @@ typedef struct
     htmc_ccode_yielded; \
 })
 #define htmc_yield(...) htmc_append_to_buffer_idx(htmc_ha, htmc_ccode_yielded_idx, ##__VA_ARGS__, NULL)
-#define htmc_yielded (htmc_ha->buffers[htmc_strdup(htmc_ha, htmc_ccode_yielded_idx)])
+#define htmc_yielded htmc_get_strdup(htmc_ha, htmc_ccode_yielded_idx)
+
+#define htmc_attr_(...) \
+__VA_ARGS__ __VA_OPT__(,) NULL))
+
+#define htmc_attr(tag, ...) \
+htmc_surround_by_tag_with_attrs(htmc_ha, htmc_id_##tag, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), htmc_concat_strings(htmc_ha, htmc_attr_
+
+#define htmc_str(...) #__VA_ARGS__
 
 extern const char *const htmc_doctypehtml;
 
@@ -166,14 +176,6 @@ extern const char *const htmc_doctypehtml;
 #define htmc_var(...) htmc_surround_by_tag(htmc_ha, 111, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
 #define htmc_video(...) htmc_surround_by_tag(htmc_ha, 112, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
 #define htmc_wbr() htmc_make_tag(htmc_ha, 113)
-
-#define htmc_attr_(...) \
-__VA_ARGS__ __VA_OPT__(,) NULL))
-
-#define htmc_attr(tag, ...) \
-htmc_surround_by_tag_with_attrs(htmc_ha, htmc_id_##tag, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), htmc_concat_strings(htmc_ha, htmc_attr_
-
-#define htmc_str(...) #__VA_ARGS__
 
 #define htmc_id_a 0
 #define htmc_id_abbr 1
@@ -307,6 +309,9 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
 char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, ...);
 char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...);
 void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, ...);
+size_t htmc_strdup(HtmcAllocations *ha, size_t buffer_idx);
+char *htmc_get_strdup(HtmcAllocations *ha, size_t buffer_idx);
+
 
 void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 
