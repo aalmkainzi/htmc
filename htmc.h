@@ -42,11 +42,13 @@ typedef struct
 ({ \
     size_t htmc_ccode_yielded_idx = htmc_get_unused(htmc_ha, 17); \
     htmc_ha->sizes[ htmc_ccode_yielded_idx ] = 0; \
+    htmc_ha->buffers[ htmc_ccode_yielded_idx ][0] = '\0'; \
     __VA_ARGS__ \
     char *htmc_ccode_yielded = htmc_ha->buffers[ htmc_ccode_yielded_idx ]; \
     htmc_ccode_yielded; \
 })
 #define htmc_yield(...) htmc_append_to_buffer_idx(htmc_ha, htmc_ccode_yielded_idx, ##__VA_ARGS__, NULL)
+#define htmc_yielded (htmc_ha->buffers[htmc_strdup(htmc_ha, htmc_ccode_yielded_idx)])
 
 extern const char *const htmc_doctypehtml;
 

@@ -354,13 +354,13 @@ char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
     return *combined_str_ptr;
 }
 
-size_t htmc_strdup(HtmcAllocations *ha, char **str)
+size_t htmc_strdup(HtmcAllocations *ha, size_t buffer_idx)
 {
-    size_t len = ha->sizes[ str - ha->buffers ];
+    size_t len = ha->sizes[ buffer_idx ];
     size_t unused_buffer_idx = htmc_get_unused(ha, len + 1);
     char **dup = &ha->buffers[ unused_buffer_idx ];
     
-    memcpy(*dup, *str, len + 1);
+    memcpy(*dup, ha->buffers[ buffer_idx ], len + 1);
     
     ha->sizes[ unused_buffer_idx ] = len;
     
@@ -381,7 +381,7 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
     size_t *cap = &ha->caps[ combined_str_idx ];
     size_t *size = &ha->sizes[ combined_str_idx ];
     
-    size_t iter_copy_idx = htmc_strdup(ha, combined_str_ptr);
+    size_t iter_copy_idx = htmc_strdup(ha, combined_str_idx);
     char **iter_copy_buffer = &ha->buffers[ iter_copy_idx ];
     const char *iter_copy = *iter_copy_buffer;
     const size_t copy_len = *size;
@@ -429,7 +429,7 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
     size_t *cap = &ha->caps[ combined_str_idx ];
     size_t *size = &ha->sizes[ combined_str_idx ];
     
-    size_t iter_copy_idx = htmc_strdup(ha, combined_str_ptr);
+    size_t iter_copy_idx = htmc_strdup(ha, combined_str_idx);
     char **iter_copy_buffer = &ha->buffers[ iter_copy_idx ];
     const char *iter_copy = *iter_copy_buffer;
     const size_t copy_len = *size;
