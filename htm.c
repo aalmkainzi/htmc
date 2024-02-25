@@ -320,7 +320,47 @@ char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
     return *unused_buffer;
 }
 
-// TODO htmc_make_tag_with_attrs
+char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *dummy)
+{
+    (void)dummy;
+    
+    const char *tag = htmc_tags[tag_id];
+    const size_t tag_len = htmc_tag_lengths[tag_id];
+    
+    size_t unused_buffer_idx = htmc_get_unused(ha, 1 + tag_len + 1 + 1);
+    char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
+    size_t *size = &ha->sizes[ unused_buffer_idx ];
+    *size = 0;
+    size_t *cap = &ha->caps[ unused_buffer_idx ];
+    
+    memcpy(*unused_buffer, "<", 1);
+    *size += 1;
+    
+    memcpy(*unused_buffer + 1, tag, tag_len);
+    *size += tag_len;
+    
+    // insert attributes here:
+    for(size_t i = 0 ; i < nb_attrs ; i++)
+    {
+        size_t attr_len = strlen(attrs[i]);
+        if(*size + attr_len + 1 >= *cap)
+        {
+            *unused_buffer = realloc(*unused_buffer, (*size + attr_len) * 2);
+            *cap = (*size + attr_len) * 2;
+        }
+        
+        memcpy(*unused_buffer + *size, " ", 1);
+        *size += 1;
+        
+        memcpy(*unused_buffer + *size, attrs[i], attr_len);
+        *size += attr_len;
+    }
+    
+    memcpy(*unused_buffer + *size, ">", 2); // 2 for the '\0'
+    *size += 1;
+    
+    return *unused_buffer;
+}
 
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
 {
@@ -469,7 +509,6 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
     return *combined_str_ptr;
 }
 
-// we could take void* as va args and check if its in range 'ha->buffers >= <= ha->buffers + nb' if so its char** if not its char*
 char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
 {
     va_list args;
