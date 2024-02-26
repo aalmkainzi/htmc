@@ -124,7 +124,7 @@ size_t htmc_get_unused(HtmcAllocations *ha, size_t with_cap)
     return unused_buffer_idx;
 }
 
-char *htmc_concat_strings(HtmcAllocations *ha, ...)
+char *htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
 {
     size_t unused_buffer_idx = htmc_get_unused(ha, 16);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
@@ -132,13 +132,8 @@ char *htmc_concat_strings(HtmcAllocations *ha, ...)
     size_t *cap = &ha->caps[ unused_buffer_idx ];
     size_t size = 0;
     
-    va_list args;
-    va_start(args, ha);
-    
-    char *next_str = va_arg(args, char*);
-    
     // if no strings were provided, return an empty string
-    if(next_str == NULL)
+    if(strs.nb == 0)
     {
         if(*cap == 0)
         {
@@ -148,51 +143,9 @@ char *htmc_concat_strings(HtmcAllocations *ha, ...)
         return *unused_buffer;
     }
     
-    for( ; next_str != NULL ; next_str = va_arg(args, char*))
+    for(size_t i = 0 ; i < strs.nb ; i++)
     {
-        size_t next_len = strlen(next_str);
-        if(size + next_len >= *cap)
-        {
-            *unused_buffer = realloc(*unused_buffer, (next_len + *cap) * 2);
-            *cap = (next_len + *cap) * 2;
-        }
-        memcpy(*unused_buffer + size, next_str, next_len);
-        
-        htmc_set_unused_if_alloced(ha, next_str);
-        
-        size = size + next_len;
-        (*unused_buffer)[size] = '\0';
-    }
-    
-    va_end(args);
-    
-    ha->sizes[ unused_buffer_idx ] = size;
-    return *unused_buffer;
-}
-
-static char *htmc_vconcat_strings(HtmcAllocations *ha, va_list args)
-{
-    size_t unused_buffer_idx = htmc_get_unused(ha, 16);
-    char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
-    
-    size_t *cap = &ha->caps[ unused_buffer_idx ];
-    size_t size = 0;
-    
-    char *next_str = va_arg(args, char*);
-    
-    // if no strings were provided, return an empty string
-    if(next_str == NULL)
-    {
-        if(*cap == 0)
-        {
-            *unused_buffer = calloc(1, sizeof(char));
-        }
-        **unused_buffer = '\0';
-        return *unused_buffer;
-    }
-    
-    for( ; next_str != NULL ; next_str = va_arg(args, char*))
-    {
+        char *next_str = strs.arr[i];
         size_t next_len = strlen(next_str);
         if(size + next_len >= *cap)
         {
@@ -237,7 +190,7 @@ char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
     return *unused_buffer;
 }
 
-char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *between)
+char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *between)
 {
     const size_t between_len = strlen(between);
     const size_t tag_len = htmc_tag_lengths[tag_id];
@@ -257,9 +210,9 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     size += tag_len;
     
     // insert attributes here:
-    for(size_t i = 0 ; i < nb_attrs; i++)
+    for(size_t i = 0 ; i < attrs.nb ; i++)
     {
-        size_t attr_len = strlen(attrs[i]);
+        size_t attr_len = strlen(attrs.arr[i]);
         if(*cap <= size + attr_len + 1) // 1 for the spaces between each attribute
         {
             *unused_buffer = realloc(*unused_buffer, size + (attr_len * 2));
@@ -267,7 +220,7 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
         }
         memcpy(*unused_buffer + size, " ", 1);
         size += 1;
-        memcpy(*unused_buffer + size, attrs[i], attr_len);
+        memcpy(*unused_buffer + size, attrs.arr[i], attr_len);
         size += attr_len;
     }
     
@@ -296,7 +249,7 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char
     
     ha->sizes[ unused_buffer_idx ] = size;
     
-    // call the if instead? test
+    // TODO test: call the if instead?
     htmc_set_unused(ha, between);
     
     return *unused_buffer;
@@ -320,7 +273,7 @@ char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
     return *unused_buffer;
 }
 
-char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *dummy)
+char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *dummy)
 {
     (void)dummy;
     
@@ -340,9 +293,9 @@ char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs
     *size += tag_len;
     
     // insert attributes here:
-    for(size_t i = 0 ; i < nb_attrs ; i++)
+    for(size_t i = 0 ; i < attrs.nb ; i++)
     {
-        size_t attr_len = strlen(attrs[i]);
+        size_t attr_len = strlen(attrs.arr[i]);
         if(*size + attr_len + 1 >= *cap)
         {
             *unused_buffer = realloc(*unused_buffer, (*size + attr_len) * 2);
@@ -352,7 +305,7 @@ char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs
         memcpy(*unused_buffer + *size, " ", 1);
         *size += 1;
         
-        memcpy(*unused_buffer + *size, attrs[i], attr_len);
+        memcpy(*unused_buffer + *size, attrs.arr[i], attr_len);
         *size += attr_len;
     }
     
@@ -362,14 +315,9 @@ char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs
     return *unused_buffer;
 }
 
-char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...)
+char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, HtmcStrsArr strs)
 {
-    va_list args;
-    va_start(args, nb);
-    
-    char *combined_str = htmc_vconcat_strings(ha, args);
-    
-    va_end(args);
+    char *combined_str = htmc_concat_strings(ha, strs);
     
     size_t combined_str_idx = htmc_find_buffer(ha, combined_str);
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
@@ -413,14 +361,9 @@ char *htmc_get_strdup(HtmcAllocations *ha, size_t buffer_idx)
     return ha->buffers[ idx ];
 }
 
-char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...)
+char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), HtmcStrsArr strs)
 {
-    va_list args;
-    va_start(args, mod);
-    
-    char *combined_str = htmc_vconcat_strings(ha, args);
-    
-    va_end(args);
+    char *combined_str = htmc_concat_strings(ha, strs);
     
     size_t combined_str_idx = htmc_find_buffer(ha, combined_str);
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
@@ -461,14 +404,9 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
     return *combined_str_ptr;
 }
 
-char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, ...)
+char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, HtmcStrsArr strs)
 {
-    va_list args;
-    va_start(args, arg);
-    
-    char *combined_str = htmc_vconcat_strings(ha, args);
-    
-    va_end(args);
+    char *combined_str = htmc_concat_strings(ha, strs);
     
     size_t combined_str_idx = htmc_find_buffer(ha, combined_str);
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
@@ -532,18 +470,13 @@ char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
     return *unused;
 }
 
-void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, ...)
+void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, HtmcStrsArr strs)
 {
     char **buffer = &ha->buffers[ buffer_idx ];
     size_t *cap = &ha->caps[ buffer_idx ];
     size_t *len = &ha->sizes[ buffer_idx ];
     
-    va_list list;
-    va_start(list, buffer_idx);
-    
-    char *concated = htmc_vconcat_strings(ha, list);
-    
-    va_end(list);
+    char *concated = htmc_concat_strings(ha, strs);
     
     size_t concated_buffer_idx = htmc_find_buffer(ha, concated);
     size_t *concated_len = &ha->sizes[ concated_buffer_idx ];

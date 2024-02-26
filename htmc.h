@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 
+// TODO for optimization, store the min and max ptr values that are stored in 'buffers', this way we don't have to do linear search everytime
 typedef struct
 {
     size_t nb;
@@ -16,6 +17,12 @@ typedef struct
     size_t *sizes;
     char **buffers;
 } HtmcAllocations;
+
+typedef struct
+{
+    char **arr;
+    size_t nb;
+} HtmcStrsArr;
 
 #define htmc_htmldoc(...) \
 ({ \
@@ -29,14 +36,18 @@ typedef struct
         .unused = malloc(init_cap * sizeof(bool)), \
     }; \
     memset(htmc_ha->unused, 1, init_cap * sizeof(bool)); \
-    char *ret = htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL); \
+    char *ret = htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)); \
     htmc_cleanup_unused_buffers(htmc_ha, ret); \
     ret; \
 })
 
-#define htmc_repeat(nb, ...) htmc_repeat_(htmc_ha, nb, ##__VA_ARGS__, NULL)
-#define htmc_repeat_modify(nb, mod, ...) htmc_repeat_modify_(htmc_ha, nb, mod, __VA_ARGS__, NULL)
-#define htmc_repeat_modify_r(nb, mod, ctx, ...) htmc_repeat_modify_r_(htmc_ha, nb, mod, ctx, __VA_ARGS__, NULL)
+// TODO make all the functions take an array and an nb, they then call htmc_concat_strings internally on the array
+
+#define htmc_strsarr(...) (HtmcStrsArr){.arr=(char*[]){__VA_ARGS__}, .nb=sizeof((char*[]){__VA_ARGS__}) / sizeof(char*)}
+
+#define htmc_repeat(nb, ...) htmc_repeat_(htmc_ha, nb, htmc_strsarr(__VA_ARGS__))
+#define htmc_repeat_modify(nb, mod, ...) htmc_repeat_modify_(htmc_ha, nb, mod, htmc_strsarr(__VA_ARGS__))
+#define htmc_repeat_modify_r(nb, mod, ctx, ...) htmc_repeat_modify_r_(htmc_ha, nb, mod, ctx, htmc_strsarr(__VA_ARGS__))
 
 #define htmc_fmt(fmt, ...) htmc_fmt_(htmc_ha, fmt, ##__VA_ARGS__)
 
@@ -49,17 +60,17 @@ typedef struct
     char *htmc_ccode_yielded = htmc_ha->buffers[ htmc_ccode_yielded_idx ]; \
     htmc_ccode_yielded; \
 })
-#define htmc_yield(...) htmc_append_to_buffer_idx(htmc_ha, htmc_ccode_yielded_idx, ##__VA_ARGS__, NULL)
+#define htmc_yield(...) htmc_append_to_buffer_idx(htmc_ha, htmc_ccode_yielded_idx, htmc_strsarr(__VA_ARGS__))
 #define htmc_yielded htmc_get_strdup(htmc_ha, htmc_ccode_yielded_idx)
 
 #define htmc_attr_(...) \
-__VA_ARGS__ __VA_OPT__(,) NULL))
+htmc_strsarr(__VA_ARGS__)))
 
 #define htmc_attr(tag, ...) \
 _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
     char(*)[1]: htmc_surround_by_tag_with_attrs, \
     char(*)[2]: htmc_make_tag_with_attrs \
-)(htmc_ha, htmc_id_##tag, &(char*[]){__VA_ARGS__}[0], sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), htmc_concat_strings(htmc_ha, htmc_attr_ \
+)(htmc_ha, htmc_id_##tag, htmc_strsarr(__VA_ARGS__), htmc_concat_strings(htmc_ha, htmc_attr_ \
 
 #define htmc_str(...) #__VA_ARGS__
 
@@ -85,122 +96,122 @@ default: 0 \
 )
 
 // tags that have a closing tag:
-#define htmc_a(...) htmc_surround_by_tag(htmc_ha, 0, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_abbr(...) htmc_surround_by_tag(htmc_ha, 1, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_address(...) htmc_surround_by_tag(htmc_ha, 2, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_article(...) htmc_surround_by_tag(htmc_ha, 4, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_aside(...) htmc_surround_by_tag(htmc_ha, 5, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_audio(...) htmc_surround_by_tag(htmc_ha, 6, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_b(...) htmc_surround_by_tag(htmc_ha, 7, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_bdi(...) htmc_surround_by_tag(htmc_ha, 9, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_bdo(...) htmc_surround_by_tag(htmc_ha, 10, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_blockquote(...) htmc_surround_by_tag(htmc_ha, 11, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_body(...) htmc_surround_by_tag(htmc_ha, 12, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_button(...) htmc_surround_by_tag(htmc_ha, 14, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_canvas(...) htmc_surround_by_tag(htmc_ha, 15, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_caption(...) htmc_surround_by_tag(htmc_ha, 16, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_cite(...) htmc_surround_by_tag(htmc_ha, 17, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_code(...) htmc_surround_by_tag(htmc_ha, 18, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_colgroup(...) htmc_surround_by_tag(htmc_ha, 20, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_data(...) htmc_surround_by_tag(htmc_ha, 21, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_datalist(...) htmc_surround_by_tag(htmc_ha, 22, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_dd(...) htmc_surround_by_tag(htmc_ha, 23, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_del(...) htmc_surround_by_tag(htmc_ha, 24, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_details(...) htmc_surround_by_tag(htmc_ha, 25, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_dfn(...) htmc_surround_by_tag(htmc_ha, 26, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_dialog(...) htmc_surround_by_tag(htmc_ha, 27, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_div(...) htmc_surround_by_tag(htmc_ha, 28, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_dl(...) htmc_surround_by_tag(htmc_ha, 29, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_dt(...) htmc_surround_by_tag(htmc_ha, 30, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_em(...) htmc_surround_by_tag(htmc_ha, 31, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_fieldset(...) htmc_surround_by_tag(htmc_ha, 33, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_figcaption(...) htmc_surround_by_tag(htmc_ha, 34, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_figure(...) htmc_surround_by_tag(htmc_ha, 35, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_footer(...) htmc_surround_by_tag(htmc_ha, 36, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_form(...) htmc_surround_by_tag(htmc_ha, 37, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_h1(...) htmc_surround_by_tag(htmc_ha, 38, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_h2(...) htmc_surround_by_tag(htmc_ha, 39, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_h3(...) htmc_surround_by_tag(htmc_ha, 40, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_h4(...) htmc_surround_by_tag(htmc_ha, 41, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_h5(...) htmc_surround_by_tag(htmc_ha, 42, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_h6(...) htmc_surround_by_tag(htmc_ha, 43, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_head(...) htmc_surround_by_tag(htmc_ha, 44, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_header(...) htmc_surround_by_tag(htmc_ha, 45, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_hgroup(...) htmc_surround_by_tag(htmc_ha, 46, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_html(...) htmc_surround_by_tag(htmc_ha, 48, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_i(...) htmc_surround_by_tag(htmc_ha, 49, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_iframe(...) htmc_surround_by_tag(htmc_ha, 50, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_ins(...) htmc_surround_by_tag(htmc_ha, 53, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_kbd(...) htmc_surround_by_tag(htmc_ha, 54, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_label(...) htmc_surround_by_tag(htmc_ha, 55, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_legend(...) htmc_surround_by_tag(htmc_ha, 56, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_li(...) htmc_surround_by_tag(htmc_ha, 57, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_htmc_main(...) htmc_surround_by_tag(htmc_ha, 59, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_map(...) htmc_surround_by_tag(htmc_ha, 60, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_mark(...) htmc_surround_by_tag(htmc_ha, 61, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_math(...) htmc_surround_by_tag(htmc_ha, 62, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_menu(...) htmc_surround_by_tag(htmc_ha, 63, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_meter(...) htmc_surround_by_tag(htmc_ha, 65, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_nav(...) htmc_surround_by_tag(htmc_ha, 66, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_noscript(...) htmc_surround_by_tag(htmc_ha, 67, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_object(...) htmc_surround_by_tag(htmc_ha, 68, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_ol(...) htmc_surround_by_tag(htmc_ha, 69, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_optgroup(...) htmc_surround_by_tag(htmc_ha, 70, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_option(...) htmc_surround_by_tag(htmc_ha, 71, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_output(...) htmc_surround_by_tag(htmc_ha, 72, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_p(...) htmc_surround_by_tag(htmc_ha, 73, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_picture(...) htmc_surround_by_tag(htmc_ha, 75, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_pre(...) htmc_surround_by_tag(htmc_ha, 76, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_progress(...) htmc_surround_by_tag(htmc_ha, 77, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_q(...) htmc_surround_by_tag(htmc_ha, 78, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_rp(...) htmc_surround_by_tag(htmc_ha, 79, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_rt(...) htmc_surround_by_tag(htmc_ha, 80, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_ruby(...) htmc_surround_by_tag(htmc_ha, 81, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_s(...) htmc_surround_by_tag(htmc_ha, 82, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_samp(...) htmc_surround_by_tag(htmc_ha, 83, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_script(...) htmc_surround_by_tag(htmc_ha, 84, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_section(...) htmc_surround_by_tag(htmc_ha, 85, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_select(...) htmc_surround_by_tag(htmc_ha, 86, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_slot(...) htmc_surround_by_tag(htmc_ha, 87, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_small(...) htmc_surround_by_tag(htmc_ha, 88, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_span(...) htmc_surround_by_tag(htmc_ha, 90, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_strong(...) htmc_surround_by_tag(htmc_ha, 91, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_style(...) htmc_surround_by_tag(htmc_ha, 92, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_sub(...) htmc_surround_by_tag(htmc_ha, 93, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_summary(...) htmc_surround_by_tag(htmc_ha, 94, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_sup(...) htmc_surround_by_tag(htmc_ha, 95, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_svg(...) htmc_surround_by_tag(htmc_ha, 96, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_table(...) htmc_surround_by_tag(htmc_ha, 97, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_tbody(...) htmc_surround_by_tag(htmc_ha, 98, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_td(...) htmc_surround_by_tag(htmc_ha, 99, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_template(...) htmc_surround_by_tag(htmc_ha, 100, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_textarea(...) htmc_surround_by_tag(htmc_ha, 101, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_tfoot(...) htmc_surround_by_tag(htmc_ha, 102, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_th(...) htmc_surround_by_tag(htmc_ha, 103, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_thead(...) htmc_surround_by_tag(htmc_ha, 104, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_time(...) htmc_surround_by_tag(htmc_ha, 105, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_title(...) htmc_surround_by_tag(htmc_ha, 106, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_tr(...) htmc_surround_by_tag(htmc_ha, 107, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_u(...) htmc_surround_by_tag(htmc_ha, 109, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_ul(...) htmc_surround_by_tag(htmc_ha, 110, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_var(...) htmc_surround_by_tag(htmc_ha, 111, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
-#define htmc_video(...) htmc_surround_by_tag(htmc_ha, 112, htmc_concat_strings(htmc_ha, ##__VA_ARGS__, NULL))
+#define htmc_a(...) htmc_surround_by_tag(htmc_ha, 0, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_abbr(...) htmc_surround_by_tag(htmc_ha, 1, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_address(...) htmc_surround_by_tag(htmc_ha, 2, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_article(...) htmc_surround_by_tag(htmc_ha, 4, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_aside(...) htmc_surround_by_tag(htmc_ha, 5, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_audio(...) htmc_surround_by_tag(htmc_ha, 6, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_b(...) htmc_surround_by_tag(htmc_ha, 7, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_bdi(...) htmc_surround_by_tag(htmc_ha, 9, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_bdo(...) htmc_surround_by_tag(htmc_ha, 10, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_blockquote(...) htmc_surround_by_tag(htmc_ha, 11, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_body(...) htmc_surround_by_tag(htmc_ha, 12, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_button(...) htmc_surround_by_tag(htmc_ha, 14, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_canvas(...) htmc_surround_by_tag(htmc_ha, 15, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_caption(...) htmc_surround_by_tag(htmc_ha, 16, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_cite(...) htmc_surround_by_tag(htmc_ha, 17, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_code(...) htmc_surround_by_tag(htmc_ha, 18, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_colgroup(...) htmc_surround_by_tag(htmc_ha, 20, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_data(...) htmc_surround_by_tag(htmc_ha, 21, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_datalist(...) htmc_surround_by_tag(htmc_ha, 22, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_dd(...) htmc_surround_by_tag(htmc_ha, 23, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_del(...) htmc_surround_by_tag(htmc_ha, 24, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_details(...) htmc_surround_by_tag(htmc_ha, 25, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_dfn(...) htmc_surround_by_tag(htmc_ha, 26, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_dialog(...) htmc_surround_by_tag(htmc_ha, 27, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_div(...) htmc_surround_by_tag(htmc_ha, 28, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_dl(...) htmc_surround_by_tag(htmc_ha, 29, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_dt(...) htmc_surround_by_tag(htmc_ha, 30, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_em(...) htmc_surround_by_tag(htmc_ha, 31, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_fieldset(...) htmc_surround_by_tag(htmc_ha, 33, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_figcaption(...) htmc_surround_by_tag(htmc_ha, 34, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_figure(...) htmc_surround_by_tag(htmc_ha, 35, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_footer(...) htmc_surround_by_tag(htmc_ha, 36, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_form(...) htmc_surround_by_tag(htmc_ha, 37, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_h1(...) htmc_surround_by_tag(htmc_ha, 38, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_h2(...) htmc_surround_by_tag(htmc_ha, 39, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_h3(...) htmc_surround_by_tag(htmc_ha, 40, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_h4(...) htmc_surround_by_tag(htmc_ha, 41, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_h5(...) htmc_surround_by_tag(htmc_ha, 42, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_h6(...) htmc_surround_by_tag(htmc_ha, 43, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_head(...) htmc_surround_by_tag(htmc_ha, 44, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_header(...) htmc_surround_by_tag(htmc_ha, 45, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_hgroup(...) htmc_surround_by_tag(htmc_ha, 46, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_html(...) htmc_surround_by_tag(htmc_ha, 48, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_i(...) htmc_surround_by_tag(htmc_ha, 49, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_iframe(...) htmc_surround_by_tag(htmc_ha, 50, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_ins(...) htmc_surround_by_tag(htmc_ha, 53, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_kbd(...) htmc_surround_by_tag(htmc_ha, 54, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_label(...) htmc_surround_by_tag(htmc_ha, 55, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_legend(...) htmc_surround_by_tag(htmc_ha, 56, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_li(...) htmc_surround_by_tag(htmc_ha, 57, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_htmc_main(...) htmc_surround_by_tag(htmc_ha, 59, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_map(...) htmc_surround_by_tag(htmc_ha, 60, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_mark(...) htmc_surround_by_tag(htmc_ha, 61, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_math(...) htmc_surround_by_tag(htmc_ha, 62, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_menu(...) htmc_surround_by_tag(htmc_ha, 63, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_meter(...) htmc_surround_by_tag(htmc_ha, 65, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_nav(...) htmc_surround_by_tag(htmc_ha, 66, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_noscript(...) htmc_surround_by_tag(htmc_ha, 67, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_object(...) htmc_surround_by_tag(htmc_ha, 68, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_ol(...) htmc_surround_by_tag(htmc_ha, 69, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_optgroup(...) htmc_surround_by_tag(htmc_ha, 70, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_option(...) htmc_surround_by_tag(htmc_ha, 71, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_output(...) htmc_surround_by_tag(htmc_ha, 72, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_p(...) htmc_surround_by_tag(htmc_ha, 73, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_picture(...) htmc_surround_by_tag(htmc_ha, 75, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_pre(...) htmc_surround_by_tag(htmc_ha, 76, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_progress(...) htmc_surround_by_tag(htmc_ha, 77, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_q(...) htmc_surround_by_tag(htmc_ha, 78, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_rp(...) htmc_surround_by_tag(htmc_ha, 79, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_rt(...) htmc_surround_by_tag(htmc_ha, 80, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_ruby(...) htmc_surround_by_tag(htmc_ha, 81, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_s(...) htmc_surround_by_tag(htmc_ha, 82, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_samp(...) htmc_surround_by_tag(htmc_ha, 83, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_script(...) htmc_surround_by_tag(htmc_ha, 84, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_section(...) htmc_surround_by_tag(htmc_ha, 85, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_select(...) htmc_surround_by_tag(htmc_ha, 86, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_slot(...) htmc_surround_by_tag(htmc_ha, 87, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_small(...) htmc_surround_by_tag(htmc_ha, 88, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_span(...) htmc_surround_by_tag(htmc_ha, 90, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_strong(...) htmc_surround_by_tag(htmc_ha, 91, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_style(...) htmc_surround_by_tag(htmc_ha, 92, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_sub(...) htmc_surround_by_tag(htmc_ha, 93, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_summary(...) htmc_surround_by_tag(htmc_ha, 94, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_sup(...) htmc_surround_by_tag(htmc_ha, 95, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_svg(...) htmc_surround_by_tag(htmc_ha, 96, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_table(...) htmc_surround_by_tag(htmc_ha, 97, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_tbody(...) htmc_surround_by_tag(htmc_ha, 98, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_td(...) htmc_surround_by_tag(htmc_ha, 99, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_template(...) htmc_surround_by_tag(htmc_ha, 100, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_textarea(...) htmc_surround_by_tag(htmc_ha, 101, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_tfoot(...) htmc_surround_by_tag(htmc_ha, 102, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_th(...) htmc_surround_by_tag(htmc_ha, 103, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_thead(...) htmc_surround_by_tag(htmc_ha, 104, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_time(...) htmc_surround_by_tag(htmc_ha, 105, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_title(...) htmc_surround_by_tag(htmc_ha, 106, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_tr(...) htmc_surround_by_tag(htmc_ha, 107, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_u(...) htmc_surround_by_tag(htmc_ha, 109, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_ul(...) htmc_surround_by_tag(htmc_ha, 110, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_var(...) htmc_surround_by_tag(htmc_ha, 111, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_video(...) htmc_surround_by_tag(htmc_ha, 112, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
 
 // tags that don't terminate
-#define htmc_area(...) htmc_make_tag_with_attrs(htmc_ha, 3, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_base(...) htmc_make_tag_with_attrs(htmc_ha, 8, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_br(...) htmc_make_tag_with_attrs(htmc_ha, 13, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_col(...) htmc_make_tag_with_attrs(htmc_ha, 19, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_embed(...) htmc_make_tag_with_attrs(htmc_ha, 32, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_hr(...) htmc_make_tag_with_attrs(htmc_ha, 47, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_img(...) htmc_make_tag_with_attrs(htmc_ha, 51, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_input(...) htmc_make_tag_with_attrs(htmc_ha, 52, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_link(...) htmc_make_tag_with_attrs(htmc_ha, 58, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_meta(...) htmc_make_tag_with_attrs(htmc_ha, 64, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_param(...) htmc_make_tag_with_attrs(htmc_ha, 74, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_source(...) htmc_make_tag_with_attrs(htmc_ha, 89, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_track(...) htmc_make_tag_with_attrs(htmc_ha, 108, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
-#define htmc_wbr(...) htmc_make_tag_with_attrs(htmc_ha, 113, (char*[]){__VA_ARGS__}, sizeof((char*[]){__VA_ARGS__}) / sizeof(char*), NULL)
+#define htmc_area(...) htmc_make_tag_with_attrs(htmc_ha, 3, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_base(...) htmc_make_tag_with_attrs(htmc_ha, 8, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_br(...) htmc_make_tag_with_attrs(htmc_ha, 13, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_col(...) htmc_make_tag_with_attrs(htmc_ha, 19, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_embed(...) htmc_make_tag_with_attrs(htmc_ha, 32, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_hr(...) htmc_make_tag_with_attrs(htmc_ha, 47, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_img(...) htmc_make_tag_with_attrs(htmc_ha, 51, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_input(...) htmc_make_tag_with_attrs(htmc_ha, 52, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_link(...) htmc_make_tag_with_attrs(htmc_ha, 58, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_meta(...) htmc_make_tag_with_attrs(htmc_ha, 64, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_param(...) htmc_make_tag_with_attrs(htmc_ha, 74, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_source(...) htmc_make_tag_with_attrs(htmc_ha, 89, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_track(...) htmc_make_tag_with_attrs(htmc_ha, 108, htmc_strsarr(__VA_ARGS__), NULL)
+#define htmc_wbr(...) htmc_make_tag_with_attrs(htmc_ha, 113, htmc_strsarr(__VA_ARGS__), NULL)
 
 #define htmc_id_a 0
 #define htmc_id_abbr 1
@@ -324,16 +335,16 @@ void htmc_set_unused(HtmcAllocations *ha, const char *str);
 void htmc_set_unused_if_alloced(HtmcAllocations *ha, const char *str);
 size_t htmc_find_unused(const HtmcAllocations *ha);
 size_t htmc_get_unused(HtmcAllocations *ha, size_t with_size);
-char *htmc_concat_strings(HtmcAllocations *ha, ...);
+char *htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs);
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);
-char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *between);
+char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *between);
 char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id);
-char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, char *attrs[], size_t nb_attrs, char *dummy);
-char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, ...);
-char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), ...);
-char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, ...);
+char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *dummy);
+char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, HtmcStrsArr strs);
+char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), HtmcStrsArr strs);
+char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, HtmcStrsArr strs);
 char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...);
-void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, ...);
+void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, HtmcStrsArr strs);
 size_t htmc_strdup(HtmcAllocations *ha, size_t buffer_idx);
 char *htmc_get_strdup(HtmcAllocations *ha, size_t buffer_idx);
 
