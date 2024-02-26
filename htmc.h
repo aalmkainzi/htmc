@@ -74,8 +74,6 @@ _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
 
 #define htmc_str(...) #__VA_ARGS__
 
-extern const char *const htmc_doctypehtml;
-
 #define htmc_is_single_tag(id) \
 _Generic(&(char[id]){ 0 }, \
 char(*)[3]: 1, \
@@ -94,6 +92,8 @@ char(*)[108]: 1, \
 char(*)[113]: 1, \
 default: 0 \
 )
+
+#define htmc_doctypehtml ("<!DOCTYPE html>")
 
 // tags that have a closing tag:
 #define htmc_a(...) htmc_surround_by_tag(htmc_ha, 0, htmc_concat_strings(htmc_ha, htmc_strsarr(__VA_ARGS__)))
