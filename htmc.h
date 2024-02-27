@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdio.h>
 
-// TODO for optimization, store the min and max ptr values that are stored in 'buffers', this way we don't have to do linear search everytime
 typedef struct
 {
     size_t nb;
