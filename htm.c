@@ -25,7 +25,6 @@ void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr)
     free(ha->sizes);
     free(ha->unused);
     free(ha->buffers);
-    free(ha);
 }
 
 size_t htmc_find_buffer(const HtmcAllocations *ha, const char *buffer)
