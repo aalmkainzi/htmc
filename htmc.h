@@ -26,7 +26,7 @@ typedef struct
 #define htmc_htmldoc(...) \
 ({ \
     const size_t init_cap = 4; \
-    HtmcAllocations htmc_ha = (HtmcAllocations){ \
+    HtmcAllocations htmc_ha = { \
         .nb = init_cap, \
         .buffers = calloc(init_cap, sizeof(char*)), \
         .caps = calloc(init_cap, sizeof(size_t)), \
