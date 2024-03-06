@@ -9,16 +9,16 @@ const uint32_t htmc_tag_lengths[] = {
 sizeof("a") - 1, sizeof("abbr") - 1, sizeof("address") - 1, sizeof("area") - 1, sizeof("article") - 1, sizeof("aside") - 1, sizeof("audio") - 1, sizeof("b") - 1, sizeof("base") - 1, sizeof("bdi") - 1, sizeof("bdo") - 1, sizeof("blockquote") - 1, sizeof("body") - 1, sizeof("br") - 1, sizeof("button") - 1, sizeof("canvas") - 1, sizeof("caption") - 1, sizeof("cite") - 1, sizeof("code") - 1, sizeof("col") - 1, sizeof("colgroup") - 1, sizeof("data") - 1, sizeof("datalist") - 1, sizeof("dd") - 1, sizeof("del") - 1, sizeof("details") - 1, sizeof("dfn") - 1, sizeof("dialog") - 1, sizeof("div") - 1, sizeof("dl") - 1, sizeof("dt") - 1, sizeof("em") - 1, sizeof("embed") - 1, sizeof("fieldset") - 1, sizeof("figcaption") - 1, sizeof("figure") - 1, sizeof("footer") - 1, sizeof("form") - 1, sizeof("h1") - 1, sizeof("h2") - 1, sizeof("h3") - 1, sizeof("h4") - 1, sizeof("h5") - 1, sizeof("h6") - 1, sizeof("head") - 1, sizeof("header") - 1, sizeof("hgroup") - 1, sizeof("hr") - 1, sizeof("html") - 1, sizeof("i") - 1, sizeof("iframe") - 1, sizeof("img") - 1, sizeof("input") - 1, sizeof("ins") - 1, sizeof("kbd") - 1, sizeof("label") - 1, sizeof("legend") - 1, sizeof("li") - 1, sizeof("link") - 1, sizeof("main") - 1, sizeof("map") - 1, sizeof("mark") - 1, sizeof("math") - 1, sizeof("menu") - 1, sizeof("meta") - 1, sizeof("meter") - 1, sizeof("nav") - 1, sizeof("noscript") - 1, sizeof("object") - 1, sizeof("ol") - 1, sizeof("optgroup") - 1, sizeof("option") - 1, sizeof("output") - 1, sizeof("p") - 1, sizeof("param") - 1, sizeof("picture") - 1, sizeof("pre") - 1, sizeof("progress") - 1, sizeof("q") - 1, sizeof("rp") - 1, sizeof("rt") - 1, sizeof("ruby") - 1, sizeof("s") - 1, sizeof("samp") - 1, sizeof("script") - 1, sizeof("section") - 1, sizeof("select") - 1, sizeof("slot") - 1, sizeof("small") - 1, sizeof("source") - 1, sizeof("span") - 1, sizeof("strong") - 1, sizeof("style") - 1, sizeof("sub") - 1, sizeof("summary") - 1, sizeof("sup") - 1, sizeof("svg") - 1, sizeof("table") - 1, sizeof("tbody") - 1, sizeof("td") - 1, sizeof("template") - 1, sizeof("textarea") - 1, sizeof("tfoot") - 1, sizeof("th") - 1, sizeof("thead") - 1, sizeof("time") - 1, sizeof("title") - 1, sizeof("tr") - 1, sizeof("track") - 1, sizeof("u") - 1, sizeof("ul") - 1, sizeof("var") - 1, sizeof("video") - 1, sizeof("wbr") - 1
 };
 
-void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr)
+void htmc_cleanup_unused_buffers(HtmcAllocations *ha, size_t used_idx)
 {
-    char **current;
-    for(current = &ha->buffers[0] ; *current != ret_ptr ; current++)
+    size_t i = 0;
+    for( ; i != used_idx ; i++)
     {
-        free(*current);
+        free(ha->buffers[i]);
     }
-    for(current++ ; current != &ha->buffers[ha->nb] ; current++)
+    for(i += 1; i < ha->nb ; i++)
     {
-        free(*current);
+        free(ha->buffers[i]);
     }
     
     free(ha->caps);
@@ -121,13 +121,14 @@ size_t htmc_get_unused(HtmcAllocations *ha, size_t with_cap)
     return unused_buffer_idx;
 }
 
-char *htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
+size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
 {
     size_t unused_buffer_idx = htmc_get_unused(ha, 16);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
     
     size_t *cap = &ha->caps[ unused_buffer_idx ];
-    size_t size = 0;
+    size_t *size = &ha->sizes[ unused_buffer_idx ];
+    *size = 0;
     
     // if no strings were provided, return an empty string
     if(strs.nb == 0)
@@ -137,62 +138,62 @@ char *htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
             *unused_buffer = calloc(1, sizeof(char));
         }
         **unused_buffer = '\0';
-        return *unused_buffer;
+        return unused_buffer_idx;
     }
     
     for(size_t i = 0 ; i < strs.nb ; i++)
     {
         char *next_str = strs.arr[i];
         size_t next_len = strlen(next_str);
-        if(size + next_len >= *cap)
+        if(*size + next_len >= *cap)
         {
             *unused_buffer = realloc(*unused_buffer, (next_len + *cap) * 2);
             *cap = (next_len + *cap) * 2;
         }
-        memcpy(*unused_buffer + size, next_str, next_len);
+        memcpy(*unused_buffer + *size, next_str, next_len);
         
         htmc_set_unused_if_alloced(ha, next_str);
         
-        size = size + next_len;
-        (*unused_buffer)[size] = '\0';
+        *size = *size + next_len;
     }
     
-    ha->sizes[ unused_buffer_idx ] = size;
-    return *unused_buffer;
+    (*unused_buffer)[*size] = '\0';
+    return unused_buffer_idx;
 }
 
-char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between)
+char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, size_t str_idx)
 {
-    const size_t between_len = strlen(between);
-    const size_t tag_len = htmc_tag_lengths[tag_id];
+    const size_t between_len = ha->sizes[ str_idx ];
+    char **buffer_ptr = &ha->buffers[ str_idx ];
+    size_t *cap = &ha->caps[ str_idx ];
+    const size_t tag_len = htmc_tag_lengths[ tag_id ];
     const size_t needed_cap = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1 + 1;
-    const char *tag = htmc_tags[tag_id];
+    const char *tag = htmc_tags[ tag_id ];
     
-    size_t unused_buffer_idx = htmc_get_unused(ha, needed_cap);
-    char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
+    htmc_gurantee_cap(buffer_ptr, cap, needed_cap);
     
-    memcpy(*unused_buffer, "<", 1);
-    memcpy(*unused_buffer + 1, tag, tag_len);
-    memcpy(*unused_buffer + 1 + tag_len, ">", 1);
-    memcpy(*unused_buffer + 1 + tag_len + 1, between, between_len);
-    memcpy(*unused_buffer + 1 + tag_len + 1 + between_len, "</", 2);
-    memcpy(*unused_buffer + 1 + tag_len + 1 + between_len + 1 + 1, tag, tag_len);
-    memcpy(*unused_buffer + 1 + tag_len + 1 + between_len + 1 + 1 + tag_len, ">", 1);
-    (*unused_buffer)[needed_cap - 1] = '\0';
+    memmove(*buffer_ptr + 1 + tag_len + 1, *buffer_ptr, between_len);
     
-    ha->sizes[ unused_buffer - ha->buffers ] = needed_cap - 1;
+    memcpy(*buffer_ptr, "<", 1);
+    memcpy(*buffer_ptr + 1, tag, tag_len);
+    memcpy(*buffer_ptr + 1 + tag_len, ">", 1);
+    memcpy(*buffer_ptr + 1 + tag_len + 1 + between_len, "</", 2);
+    memcpy(*buffer_ptr + 1 + tag_len + 1 + between_len + 1 + 1, tag, tag_len);
+    memcpy(*buffer_ptr + 1 + tag_len + 1 + between_len + 1 + 1 + tag_len, ">", 1);
+    (*buffer_ptr)[ needed_cap - 1 ] = '\0';
     
-    htmc_set_unused(ha, between);
+    ha->sizes[ str_idx ] = needed_cap - 1;
     
-    return *unused_buffer;
+    return *buffer_ptr;
 }
 
-char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *between)
+char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, size_t str_idx)
 {
-    const size_t between_len = strlen(between);
-    const size_t tag_len = htmc_tag_lengths[tag_id];
+    const size_t between_len = ha->sizes[ str_idx ];
+    const char *between = ha->buffers[ str_idx ];
+    const size_t tag_len = htmc_tag_lengths[ tag_id ];
     const size_t needed_cap = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1 + 1;
-    const char *tag = htmc_tags[tag_id];
+    const char *tag = htmc_tags[ tag_id ];
     
     size_t unused_buffer_idx = htmc_get_unused(ha, needed_cap);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
@@ -245,17 +246,15 @@ char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, Htmc
     (*unused_buffer)[size] = '\0';
     
     ha->sizes[ unused_buffer_idx ] = size;
-    
-    // TODO test: call the if instead?
-    htmc_set_unused(ha, between);
+    ha->unused[ str_idx ] = true;
     
     return *unused_buffer;
 }
 
 char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
 {
-    const char *tag = htmc_tags[tag_id];
-    const size_t tag_len = htmc_tag_lengths[tag_id];
+    const char *tag = htmc_tags[ tag_id ];
+    const size_t tag_len = htmc_tag_lengths[ tag_id ];
     
     size_t unused_buffer_idx = htmc_get_unused(ha, 1 + tag_len + 1 + 1);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
@@ -263,7 +262,7 @@ char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id)
     memcpy(*unused_buffer, "<", 1);
     memcpy(*unused_buffer + 1, tag, tag_len);
     memcpy(*unused_buffer + 1 + tag_len, ">", 1);
-    (*unused_buffer)[1 + tag_len + 1] = '\0';
+    (*unused_buffer)[ 1 + tag_len + 1 ] = '\0';
     
     ha->sizes[ unused_buffer_idx ] = tag_len + 2;
     
@@ -274,8 +273,8 @@ char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr
 {
     (void)dummy;
     
-    const char *tag = htmc_tags[tag_id];
-    const size_t tag_len = htmc_tag_lengths[tag_id];
+    const char *tag = htmc_tags[ tag_id ];
+    const size_t tag_len = htmc_tag_lengths[ tag_id ];
     
     size_t unused_buffer_idx = htmc_get_unused(ha, 1 + tag_len + 1 + 1);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
@@ -314,9 +313,8 @@ char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr
 
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, HtmcStrsArr strs)
 {
-    char *combined_str = htmc_concat_strings(ha, strs);
+    size_t combined_str_idx = htmc_concat_strings(ha, strs);
     
-    size_t combined_str_idx = htmc_find_buffer(ha, combined_str);
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
     size_t *cap = &ha->caps[ combined_str_idx ];
     const size_t combined_strlen = ha->sizes[ combined_str_idx ];
@@ -339,30 +337,30 @@ char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, HtmcStrsArr strs)
     return *combined_str_ptr;
 }
 
-size_t htmc_strdup(HtmcAllocations *ha, size_t buffer_idx)
+size_t htmc_strdup(HtmcAllocations *ha, size_t str_idx)
 {
-    size_t len = ha->sizes[ buffer_idx ];
+    size_t len = ha->sizes[ str_idx ];
     size_t unused_buffer_idx = htmc_get_unused(ha, len + 1);
     char **dup = &ha->buffers[ unused_buffer_idx ];
     
-    memcpy(*dup, ha->buffers[ buffer_idx ], len + 1);
+    memcpy(*dup, ha->buffers[ str_idx ], len + 1);
     
     ha->sizes[ unused_buffer_idx ] = len;
     
     return unused_buffer_idx;
 }
 
-char *htmc_get_strdup(HtmcAllocations *ha, size_t buffer_idx)
+char *htmc_get_strdup(HtmcAllocations *ha, size_t str_idx)
 {
-    size_t idx = htmc_strdup(ha, buffer_idx);
+    size_t idx = htmc_strdup(ha, str_idx);
     return ha->buffers[ idx ];
 }
 
+// should mod take idx? maybe leave that as the re-entrant version with void*, and let user handle idx
 char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), HtmcStrsArr strs)
 {
-    char *combined_str = htmc_concat_strings(ha, strs);
+    size_t combined_str_idx = htmc_concat_strings(ha, strs);
     
-    size_t combined_str_idx = htmc_find_buffer(ha, combined_str);
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
     size_t *cap = &ha->caps[ combined_str_idx ];
     size_t *size = &ha->sizes[ combined_str_idx ];
@@ -403,9 +401,8 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
 
 char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, HtmcStrsArr strs)
 {
-    char *combined_str = htmc_concat_strings(ha, strs);
+    size_t combined_str_idx = htmc_concat_strings(ha, strs);
     
-    size_t combined_str_idx = htmc_find_buffer(ha, combined_str);
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
     size_t *cap = &ha->caps[ combined_str_idx ];
     size_t *size = &ha->sizes[ combined_str_idx ];
@@ -467,15 +464,14 @@ char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
     return *unused;
 }
 
-void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, HtmcStrsArr strs)
+void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t str_idx, HtmcStrsArr strs)
 {
-    char **buffer = &ha->buffers[ buffer_idx ];
-    size_t *cap = &ha->caps[ buffer_idx ];
-    size_t *len = &ha->sizes[ buffer_idx ];
+    char **buffer = &ha->buffers[ str_idx ];
+    size_t *cap = &ha->caps[ str_idx ];
+    size_t *len = &ha->sizes[ str_idx ];
     
-    char *concated = htmc_concat_strings(ha, strs);
-    
-    size_t concated_buffer_idx = htmc_find_buffer(ha, concated);
+    size_t concated_buffer_idx = htmc_concat_strings(ha, strs);
+    char *concated = ha->buffers[ concated_buffer_idx ];
     size_t *concated_len = &ha->sizes[ concated_buffer_idx ];
     
     htmc_gurantee_cap(buffer, cap, *concated_len + *len + 1);
@@ -484,6 +480,29 @@ void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, HtmcStrsA
     *len += *concated_len;
     
     ha->unused[ concated_buffer_idx ] = true;
+}
+
+// TODO check in the string for '--' and report error
+char *htmc_comment_(HtmcAllocations *ha, size_t str_idx)
+{
+    const size_t between_len = ha->sizes[ str_idx ];
+    char **buffer_ptr = &ha->buffers[ str_idx ];
+    size_t *cap = &ha->caps[ str_idx ];
+    const size_t comment_start_len = 4;
+    const size_t comment_end_len = 3;
+    const size_t needed_cap = comment_start_len + between_len + comment_end_len + 1;
+    
+    htmc_gurantee_cap(buffer_ptr, cap, needed_cap);
+    
+    memmove(*buffer_ptr + comment_start_len, *buffer_ptr, between_len);
+    
+    memcpy(*buffer_ptr, "<!--", comment_start_len);
+    memcpy(*buffer_ptr + comment_start_len + between_len, "-->", 3);
+    (*buffer_ptr)[ needed_cap - 1 ] = '\0';
+    
+    ha->sizes[ str_idx ] = needed_cap - 1;
+    
+    return *buffer_ptr;
 }
 
 void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap)

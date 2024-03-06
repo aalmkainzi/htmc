@@ -34,8 +34,9 @@ typedef struct
         .unused = malloc(init_cap * sizeof(bool)), \
     }; \
     memset(htmc_ha.unused, 1, init_cap * sizeof(bool)); \
-    char *ret = htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)); \
-    htmc_cleanup_unused_buffers(&htmc_ha, ret); \
+    size_t ret_idx = htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)); \
+    char *ret = htmc_ha.buffers[ ret_idx ]; \
+    htmc_cleanup_unused_buffers(&htmc_ha, ret_idx); \
     ret; \
 })
 
@@ -72,24 +73,26 @@ _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
 
 #define htmc_is_single_tag(id) \
 _Generic(&(char[id]){ 0 }, \
-char(*)[3]: 1, \
-char(*)[8]: 1, \
-char(*)[13]: 1, \
-char(*)[19]: 1, \
-char(*)[32]: 1, \
-char(*)[47]: 1, \
-char(*)[51]: 1, \
-char(*)[52]: 1, \
-char(*)[58]: 1, \
-char(*)[64]: 1, \
-char(*)[74]: 1, \
-char(*)[89]: 1, \
-char(*)[108]: 1, \
-char(*)[113]: 1, \
+char(*)[ htmc_id_area ]:   1, \
+char(*)[ htmc_id_base ]:   1, \
+char(*)[ htmc_id_br ]:     1, \
+char(*)[ htmc_id_col ]:    1, \
+char(*)[ htmc_id_embed ]:  1, \
+char(*)[ htmc_id_hr ]:     1, \
+char(*)[ htmc_id_img ]:    1, \
+char(*)[ htmc_id_input ]:  1, \
+char(*)[ htmc_id_link ]:   1, \
+char(*)[ htmc_id_meta ]:   1, \
+char(*)[ htmc_id_param ]:  1, \
+char(*)[ htmc_id_source ]: 1, \
+char(*)[ htmc_id_track ]:  1, \
+char(*)[ htmc_id_wbr ]:    1, \
 default: 0 \
 )
 
 #define htmc_doctypehtml ("<!DOCTYPE html>")
+
+#define htmc_comment(...) htmc_comment_(&htmc_ha, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 
 // tags that have a closing tag:
 #define htmc_a(...) htmc_surround_by_tag(&htmc_ha, 0, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
@@ -324,16 +327,16 @@ default: 0 \
 #define htmc_id_video 112
 #define htmc_id_wbr 113
 
-void htmc_cleanup_unused_buffers(HtmcAllocations *ha, const char *ret_ptr);
+void htmc_cleanup_unused_buffers(HtmcAllocations *ha, size_t used_idx);
 size_t htmc_find_buffer(const HtmcAllocations *ha, const char *buffer);
 void htmc_grow_buffers(HtmcAllocations *ha);
 void htmc_set_unused(HtmcAllocations *ha, const char *str);
 void htmc_set_unused_if_alloced(HtmcAllocations *ha, const char *str);
 size_t htmc_find_unused(const HtmcAllocations *ha);
 size_t htmc_get_unused(HtmcAllocations *ha, size_t with_size);
-char *htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs);
-char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, char *between);
-char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *between);
+size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs);
+char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, size_t str_idx);
+char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, size_t str_idx);
 char *htmc_make_tag(HtmcAllocations *ha, uint16_t tag_id);
 char *htmc_make_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, char *dummy);
 char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, HtmcStrsArr strs);
@@ -341,9 +344,9 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
 char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx, void *arg), void *arg, HtmcStrsArr strs);
 char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...);
 void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t buffer_idx, HtmcStrsArr strs);
-size_t htmc_strdup(HtmcAllocations *ha, size_t buffer_idx);
-char *htmc_get_strdup(HtmcAllocations *ha, size_t buffer_idx);
-
+size_t htmc_strdup(HtmcAllocations *ha, size_t str_idx);
+char *htmc_get_strdup(HtmcAllocations *ha, size_t str_idx);
+char *htmc_comment_(HtmcAllocations *ha, size_t str_idx);
 
 void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 
@@ -356,6 +359,8 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 #undef htmldoc
 
 #undef doctypehtml
+
+#undef comment
 
 #undef a
 #undef abbr
@@ -479,6 +484,8 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 #define htmldoc(...) htmc_htmldoc(__VA_ARGS__)
 
 #define doctypehtml htmc_doctypehtml
+
+#define comment htmc_comment
 
 #define a(...) htmc_a(__VA_ARGS__)
 #define abbr(...) htmc_abbr(__VA_ARGS__)
