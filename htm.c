@@ -164,27 +164,27 @@ size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, size_t str_idx)
 {
     const size_t between_len = ha->sizes[ str_idx ];
-    char **buffer_ptr = &ha->buffers[ str_idx ];
+    char **between_ptr = &ha->buffers[ str_idx ];
     size_t *cap = &ha->caps[ str_idx ];
     const size_t tag_len = htmc_tag_lengths[ tag_id ];
     const size_t needed_cap = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1 + 1;
     const char *tag = htmc_tags[ tag_id ];
     
-    htmc_gurantee_cap(buffer_ptr, cap, needed_cap);
+    htmc_gurantee_cap(between_ptr, cap, needed_cap);
     
-    memmove(*buffer_ptr + 1 + tag_len + 1, *buffer_ptr, between_len);
+    memmove(*between_ptr + 1 + tag_len + 1, *between_ptr, between_len);
     
-    memcpy(*buffer_ptr, "<", 1);
-    memcpy(*buffer_ptr + 1, tag, tag_len);
-    memcpy(*buffer_ptr + 1 + tag_len, ">", 1);
-    memcpy(*buffer_ptr + 1 + tag_len + 1 + between_len, "</", 2);
-    memcpy(*buffer_ptr + 1 + tag_len + 1 + between_len + 1 + 1, tag, tag_len);
-    memcpy(*buffer_ptr + 1 + tag_len + 1 + between_len + 1 + 1 + tag_len, ">", 1);
-    (*buffer_ptr)[ needed_cap - 1 ] = '\0';
+    memcpy(*between_ptr, "<", 1);
+    memcpy(*between_ptr + 1, tag, tag_len);
+    memcpy(*between_ptr + 1 + tag_len, ">", 1);
+    memcpy(*between_ptr + 1 + tag_len + 1 + between_len, "</", 2);
+    memcpy(*between_ptr + 1 + tag_len + 1 + between_len + 1 + 1, tag, tag_len);
+    memcpy(*between_ptr + 1 + tag_len + 1 + between_len + 1 + 1 + tag_len, ">", 1);
+    (*between_ptr)[ needed_cap - 1 ] = '\0';
     
     ha->sizes[ str_idx ] = needed_cap - 1;
     
-    return *buffer_ptr;
+    return *between_ptr;
 }
 
 char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, size_t str_idx)
@@ -337,25 +337,6 @@ char *htmc_repeat_(HtmcAllocations *ha, uint32_t nb, HtmcStrsArr strs)
     return *combined_str_ptr;
 }
 
-size_t htmc_strdup(HtmcAllocations *ha, size_t str_idx)
-{
-    size_t len = ha->sizes[ str_idx ];
-    size_t unused_buffer_idx = htmc_get_unused(ha, len + 1);
-    char **dup = &ha->buffers[ unused_buffer_idx ];
-    
-    memcpy(*dup, ha->buffers[ str_idx ], len + 1);
-    
-    ha->sizes[ unused_buffer_idx ] = len;
-    
-    return unused_buffer_idx;
-}
-
-char *htmc_get_strdup(HtmcAllocations *ha, size_t str_idx)
-{
-    size_t idx = htmc_strdup(ha, str_idx);
-    return ha->buffers[ idx ];
-}
-
 // should mod take idx? maybe leave that as the re-entrant version with void*, and let user handle idx
 char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const char *before_mod, size_t len, char **buffer, size_t *cap, uint32_t idx), HtmcStrsArr strs)
 {
@@ -439,6 +420,25 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
     (*combined_str_ptr)[*size] = '\0';
     
     return *combined_str_ptr;
+}
+
+size_t htmc_strdup(HtmcAllocations *ha, size_t str_idx)
+{
+    size_t len = ha->sizes[ str_idx ];
+    size_t unused_buffer_idx = htmc_get_unused(ha, len + 1);
+    char **dup = &ha->buffers[ unused_buffer_idx ];
+    
+    memcpy(*dup, ha->buffers[ str_idx ], len + 1);
+    
+    ha->sizes[ unused_buffer_idx ] = len;
+    
+    return unused_buffer_idx;
+}
+
+char *htmc_get_strdup(HtmcAllocations *ha, size_t str_idx)
+{
+    size_t idx = htmc_strdup(ha, str_idx);
+    return ha->buffers[ idx ];
 }
 
 char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
