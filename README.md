@@ -6,7 +6,7 @@
 int main()
 {
     char *doc =
-    htmldoc(
+    htmc(
         html(
             head(
                 title("my html page")
@@ -35,7 +35,7 @@ attr(tag_name, ...list of attributes)
 int main()
 {
     char *doc =
-    htmldoc(
+    htmc(
         html(
             head(
                 title("my html page")
@@ -58,7 +58,7 @@ or
 int main()
 {
     char *doc =
-    htmldoc(
+    htmc(
         html(
             head(
                 title("my html page")
@@ -85,7 +85,7 @@ int main()
     fgets(myname, 16, stdin);
     
     char *doc =
-    htmldoc(
+    htmc(
         html(
             head(
                 title(myname, "'s html page")
@@ -110,7 +110,7 @@ int main()
     fgets(myname, 16, stdin);
     
     char *doc =
-    htmldoc(
+    htmc(
         html(
             head(
                 title(
@@ -136,7 +136,7 @@ int main()
 int main()
 {
     char *doc =
-    htmldoc(
+    htmc(
         html(
             head(),
             body(
@@ -167,7 +167,7 @@ int main()
 #include "htmc.h"
     
     char *doc =
-    htmc_htmldoc(
+    htmc(
         htmc_html(
             htmc_head(
                 htmc_title("my html page")
