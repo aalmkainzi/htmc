@@ -23,7 +23,7 @@ typedef struct
     size_t nb;
 } HtmcStrsArr;
 
-#define htmc_htmldoc(...) \
+#define htmc(...) \
 ({ \
     const size_t init_cap = 4; \
     HtmcAllocations htmc_ha = { \
@@ -129,7 +129,7 @@ _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
 #define htmc_label(...) htmc_surround_by_tag(&htmc_ha, 55, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_legend(...) htmc_surround_by_tag(&htmc_ha, 56, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_li(...) htmc_surround_by_tag(&htmc_ha, 57, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
-#define htmc_htmc_main(...) htmc_surround_by_tag(&htmc_ha, 59, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
+#define htmc_main(...) htmc_surround_by_tag(&htmc_ha, 59, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_map(...) htmc_surround_by_tag(&htmc_ha, 60, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_mark(...) htmc_surround_by_tag(&htmc_ha, 61, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_math(...) htmc_surround_by_tag(&htmc_ha, 62, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
@@ -340,8 +340,6 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 
 #undef HTMC_PREFIX
 
-#undef htmldoc
-
 #undef doctypehtml
 
 #undef comment
@@ -405,7 +403,6 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 #undef legend
 #undef li
 #undef link
-#undef htmc_main
 #undef map
 #undef mark
 #undef math
@@ -464,8 +461,6 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 #undef attr
 
 #else
-
-#define htmldoc(...) htmc_htmldoc(__VA_ARGS__)
 
 #define doctypehtml htmc_doctypehtml
 
@@ -530,7 +525,6 @@ void htmc_gurantee_cap(char **buffer, size_t *cap, size_t new_cap);
 #define legend(...) htmc_legend(__VA_ARGS__)
 #define li(...) htmc_li(__VA_ARGS__)
 #define link(...) htmc_link(__VA_ARGS__)
-#define htmc_main(...) htmc_htmc_main(__VA_ARGS__)
 #define map(...) htmc_map(__VA_ARGS__)
 #define mark(...) htmc_mark(__VA_ARGS__)
 #define math(...) htmc_math(__VA_ARGS__)
