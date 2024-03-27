@@ -69,7 +69,7 @@ _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
     char(*)[2]: htmc_make_tag_with_attrs \
 )(&htmc_ha, htmc_id_##tag, htmc_strsarr(__VA_ARGS__), htmc_concat_strings(&htmc_ha, htmc_attr_ \
 
-#define htmc_str(...) #__VA_ARGS__
+#define htmc_strlit(...) #__VA_ARGS__
 
 #define htmc_is_single_tag(id) \
 (id == (htmc_id_area || htmc_id_base || htmc_id_br || htmc_id_col || htmc_id_embed || htmc_id_hr || htmc_id_img || htmc_id_input || htmc_id_link || htmc_id_meta || htmc_id_param || htmc_id_source || htmc_id_track || htmc_id_wbr))
@@ -78,7 +78,7 @@ _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
 
 #define htmc_comment(...) htmc_comment_(&htmc_ha, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 
-// tags that have a closing tag:
+// tags that need a closing tag:
 #define htmc_a(...) htmc_surround_by_tag(&htmc_ha, 0, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_abbr(...) htmc_surround_by_tag(&htmc_ha, 1, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
 #define htmc_address(...) htmc_surround_by_tag(&htmc_ha, 2, htmc_concat_strings(&htmc_ha, htmc_strsarr(__VA_ARGS__)))
