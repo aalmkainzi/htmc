@@ -125,9 +125,8 @@ size_t htmc_get_unused(HtmcAllocations *ha, size_t with_cap)
     return unused_buffer_idx;
 }
 
-size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
+size_t htmc_concat_strings_into(HtmcAllocations *ha, HtmcStrsArr strs, size_t unused_buffer_idx)
 {
-    size_t unused_buffer_idx = htmc_get_unused(ha, 16);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
     
     size_t *cap = &ha->caps[ unused_buffer_idx ];
@@ -151,8 +150,8 @@ size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
         size_t next_len = strlen(next_str);
         if(*size + next_len >= *cap)
         {
-            *unused_buffer = realloc(*unused_buffer, (next_len + *cap) * 2);
             *cap = (next_len + *cap) * 2;
+            *unused_buffer = realloc(*unused_buffer, *cap);
         }
         memcpy(*unused_buffer + *size, next_str, next_len);
         
@@ -163,6 +162,47 @@ size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
     
     (*unused_buffer)[*size] = '\0';
     return unused_buffer_idx;
+}
+
+size_t htmc_concat_strings(HtmcAllocations *ha, HtmcStrsArr strs)
+{
+    size_t unused_buffer_idx = htmc_get_unused(ha, 16);
+    return htmc_concat_strings_into(ha, strs, unused_buffer_idx);
+}
+
+void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t append_to, HtmcStrsArr strs)
+{
+    char **append_to_str = &ha->buffers[ append_to ];
+    size_t *len = &ha->sizes[ append_to ];
+    size_t *cap = &ha->caps [ append_to ];
+    
+    for(size_t i = 0 ; i < strs.nb ; i++)
+    {
+        char *next_str = strs.arr[i];
+        size_t next_len = strlen(strs.arr[i]);
+        bool is_copy = (next_str == *append_to_str);
+        
+        if(*len + next_len >= *cap)
+        {
+            htmc_gurantee_cap(append_to_str, cap, (next_len + *cap) * 2);
+        }
+        
+        // if it's a copy of *append_to_str that means it might have been invalidate with the htmc_gurantee_cap
+        if(is_copy)
+        {
+            memmove(*append_to_str + *len, *append_to_str, next_len);
+            *len += next_len;
+        }
+        else
+        {
+            memmove(*append_to_str + *len, next_str, next_len);
+            *len += next_len;
+            
+            htmc_set_unused_if_alloced(ha, next_str);
+        }
+    }
+    
+    (*append_to_str)[*len] = '\0';
 }
 
 char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, size_t str_idx)
@@ -194,12 +234,12 @@ char *htmc_surround_by_tag(HtmcAllocations *ha, uint16_t tag_id, size_t str_idx)
 char *htmc_surround_by_tag_with_attrs(HtmcAllocations *ha, uint16_t tag_id, HtmcStrsArr attrs, size_t str_idx)
 {
     const size_t between_len = ha->sizes[ str_idx ];
-    const char *between = ha->buffers[ str_idx ];
     const size_t tag_len = htmc_tag_lengths[ tag_id ];
     const size_t needed_cap = 1 + tag_len + 1 + between_len + 1 + 1 + tag_len + 1 + 1;
     const char *tag = htmc_tags[ tag_id ];
     
     size_t unused_buffer_idx = htmc_get_unused(ha, needed_cap);
+    const char *between = ha->buffers[ str_idx ];
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
     
     size_t *cap = &ha->caps[ unused_buffer_idx ];
@@ -346,16 +386,18 @@ char *htmc_repeat_modify_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const cha
 {
     size_t combined_str_idx = htmc_concat_strings(ha, strs);
     
+    size_t iter_copy_idx = htmc_strdup(ha, combined_str_idx);
+    
+    size_t unused_buffer_idx = htmc_get_unused(ha, ha->sizes[ combined_str_idx ] + 1);
+    
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
     size_t *cap = &ha->caps[ combined_str_idx ];
     size_t *size = &ha->sizes[ combined_str_idx ];
     
-    size_t iter_copy_idx = htmc_strdup(ha, combined_str_idx);
     char **iter_copy_buffer = &ha->buffers[ iter_copy_idx ];
     const char *iter_copy = *iter_copy_buffer;
     const size_t copy_len = *size;
     
-    size_t unused_buffer_idx = htmc_get_unused(ha, copy_len + 1);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
     **unused_buffer = '\0';
     size_t *unused_cap = &ha->caps[ unused_buffer_idx ];
@@ -388,16 +430,18 @@ char *htmc_repeat_modify_r_(HtmcAllocations *ha, uint32_t nb, void(*mod)(const c
 {
     size_t combined_str_idx = htmc_concat_strings(ha, strs);
     
+    size_t iter_copy_idx = htmc_strdup(ha, combined_str_idx);
+    
+    size_t unused_buffer_idx = htmc_get_unused(ha, ha->sizes[ combined_str_idx ] + 1);
+    
     char **combined_str_ptr = &ha->buffers[ combined_str_idx ];
     size_t *cap = &ha->caps[ combined_str_idx ];
     size_t *size = &ha->sizes[ combined_str_idx ];
     
-    size_t iter_copy_idx = htmc_strdup(ha, combined_str_idx);
     char **iter_copy_buffer = &ha->buffers[ iter_copy_idx ];
     const char *iter_copy = *iter_copy_buffer;
     const size_t copy_len = *size;
     
-    size_t unused_buffer_idx = htmc_get_unused(ha, copy_len + 1);
     char **unused_buffer = &ha->buffers[ unused_buffer_idx ];
     **unused_buffer = '\0';
     size_t *unused_cap = &ha->caps[ unused_buffer_idx ];
@@ -466,24 +510,6 @@ char *htmc_fmt_(HtmcAllocations *ha, const char *fmt, ...)
     htmc_set_unused_if_alloced(ha, fmt);
     
     return *unused;
-}
-
-void htmc_append_to_buffer_idx(HtmcAllocations *ha, size_t str_idx, HtmcStrsArr strs)
-{
-    char **buffer = &ha->buffers[ str_idx ];
-    size_t *cap = &ha->caps[ str_idx ];
-    size_t *len = &ha->sizes[ str_idx ];
-    
-    size_t concated_buffer_idx = htmc_concat_strings(ha, strs);
-    char *concated = ha->buffers[ concated_buffer_idx ];
-    size_t *concated_len = &ha->sizes[ concated_buffer_idx ];
-    
-    htmc_gurantee_cap(buffer, cap, *concated_len + *len + 1);
-    
-    memcpy(*buffer + *len, concated, *concated_len + 1);
-    *len += *concated_len;
-    
-    ha->unused[ concated_buffer_idx ] = true;
 }
 
 // TODO check in the string for '--' and report error
