@@ -59,6 +59,7 @@ typedef struct
 })
 #define htmc_yield(...) htmc_append_to_buffer_idx(&htmc_ha, htmc_ccode_yielded_idx, htmc_strsarr(__VA_ARGS__))
 #define htmc_yielded htmc_ha.buffers[ htmc_ccode_yielded_idx ]
+#define htmc_yielded_len htmc_ha.sizes[ htmc_ccode_yielded_idx ]
 
 #define htmc_attr_(...) \
 htmc_strsarr(__VA_ARGS__)))
