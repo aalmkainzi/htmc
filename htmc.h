@@ -67,7 +67,7 @@ htmc_strsarr(__VA_ARGS__)))
 _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
     char(*)[1]: htmc_surround_by_tag_with_attrs, \
     char(*)[2]: htmc_make_tag_with_attrs \
-)(&htmc_ha, htmc_id_##tag, htmc_strsarr(__VA_ARGS__), htmc_concat_strings(&htmc_ha, htmc_attr_ \
+)(&htmc_ha, htmc_id_##tag, htmc_strsarr(__VA_ARGS__), htmc_concat_strings(&htmc_ha, htmc_attr_
 
 #define htmc_strlit(...) #__VA_ARGS__
 
