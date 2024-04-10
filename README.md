@@ -64,7 +64,7 @@ int main()
                 title("my html page")
             ),
             body(
-                attr(h1, htmc_str(font-size: 16px; color: blue;))("BIG TITLE"),
+                attr(h1, htmc_strlit(font-size: 16px; color: blue;))("BIG TITLE"),
                 p("small text")
             )
         )
@@ -156,7 +156,7 @@ int main()
 }
 ```
 ## Namespacing
-If the HMTL tags pollute your namespace, you can choose to prefix them all with `htmc_`:
+If the HTML tags pollute your namespace, you can choose to prefix them all with `htmc_`:
 
 ```C
 #include "htm.c"
@@ -178,7 +178,8 @@ int main()
             )
         )
     );
-    
+
+    puts(doc);
     free(doc);
 }
 ```
