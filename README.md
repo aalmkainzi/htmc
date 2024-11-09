@@ -159,13 +159,11 @@ int main()
 If the HTML tags pollute your namespace, you can choose to prefix them all with `htmc_`:
 
 ```C
+#define HTMC_PREFIX
 #include "htm.c"
 
 int main()
-{
-#define HTMC_PREFIX
-#include "htmc.h"
-    
+{    
     char *doc =
     htmc(
         htmc_html(
