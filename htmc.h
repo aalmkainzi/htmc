@@ -73,7 +73,7 @@ _Generic(&(char[htmc_is_single_tag(htmc_id_##tag) + 1]){ 0 } , \
 #define htmc_strlit(...) #__VA_ARGS__
 
 #define htmc_is_single_tag(id) \
-(id == (htmc_id_area || htmc_id_base || htmc_id_br || htmc_id_col || htmc_id_embed || htmc_id_hr || htmc_id_img || htmc_id_input || htmc_id_link || htmc_id_meta || htmc_id_param || htmc_id_source || htmc_id_track || htmc_id_wbr))
+(id == htmc_id_area || id == htmc_id_base || id == htmc_id_br || id == htmc_id_col || id == htmc_id_embed || id == htmc_id_hr || id == htmc_id_img || id == htmc_id_input || id == htmc_id_link || id == htmc_id_meta || id == htmc_id_param || id == htmc_id_source || id == htmc_id_track || id == htmc_id_wbr)
 
 #define htmc_doctypehtml ("<!DOCTYPE html>")
 
