@@ -194,7 +194,7 @@ and in all other TUs:
 #include "htmc.h"
 ```
 
-Or alternatively you can add `htm.c` to your build and only `include` `htmc.h`
+Or alternatively you can add `htm.c` to your build and always include `htmc.h`
 
 ## Compiler support
 
